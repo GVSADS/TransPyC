@@ -1,0 +1,2571 @@
+=== Symbol Table ===
+{'FIFO32': {'type': 'struct', 'members': {'task': {'type': 'int', 'is_pointer': False}, 'buffer': {'type': 'void*', 'is_pointer': True}, 'size': {'type': 'int', 'is_pointer': False}, 'free': {'type': 'int', 'is_pointer': False}, 'flags': {'type': 'int', 'is_pointer': False}, 'next': {'type': 'int', 'is_pointer': False}}}, 'BOOTINFO': {'type': 'struct', 'members': {'version': {'type': 'int', 'is_pointer': False}, 'leds': {'type': 'int', 'is_pointer': False}, 'vram_size': {'type': 'int', 'is_pointer': False}}}, 'memtest': {'type': 'function'}, 'test_bubble_sort': {'type': 'function'}, 'a': {'type': 'struct', 'members': {'k1': {'type': 'int', 'is_pointer': False}}}, 'shtctl': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'PIC1_IMR': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'task': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'buffer': {'type': 'variable', 'declared_type': 'void*', 'is_pointer': True}, 'size': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'free': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'flags': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'next': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'version': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'leds': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'vram_size': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, 'k1': {'type': 'variable', 'declared_type': 'int', 'is_pointer': False}, '__init__': {'type': 'function'}}
+
+=== TransPyC Debug Info ===
+Input File: test.py
+Output File: test.c
+File Content:
+import c
+import t
+# 导入标准库
+import stdio  # std: standard
+from kernel2 import *
+
+
+F1: t.CDefine = -1
+def keywin_off(key_win: t.CStruct(name="SHEET") | t.CPtr) -> c.State | t.CVoid: pass
+def keywin_off2(key_win: t.CPtr | t.CStruct(name="SHEET")) -> c.State: pass
+
+MOUSEX: t.CInt
+
+# 测试数组声明
+keytable0: t.CStatic | t.CChar[0x80]
+buf_start: t.CUnsigned | t.CChar | t.CPtr
+
+def io_hlt() -> c.State: pass
+
+# 测试指针操作
+def test_ptr_operations():
+    # 测试指针赋值
+    c.Ptr(0x1000, 42)
+    # 测试带类型转换的指针赋值
+    c.Ptr(0x1000, 42, type=t.CInt())
+    # 测试指针取值
+    value = c.Ptr(0x1000)
+    # 测试带类型转换的指针取值
+    value = c.Ptr(0x1000, type=t.CInt())
+    # 表示 struct xxx * 类型
+    var: t.CStruct | t.CPtr = value
+    var2: t.CStruct | t.CPtr = value()
+
+
+# 测试类型转换
+def test_type_casting():
+    x = 42
+    # 测试简单类型转换
+    y = t.CType(x, t.CInt())
+    z: t.CChar = t.CType(x, t.CChar())
+    # 测试组合类型转换
+    p = t.CType(x, t.CUnsigned(), t.CChar(), t.CPtr())
+    # 测试单个类型转换函数
+    q = t.CInt(x)
+    r = t.CChar(x)
+    
+    if x:
+        x = t.CType(x, t.CInt())
+        if x:
+            x = t.CType(x, t.CInt())
+    if x:
+        x = t.CInt(x)
+
+# 测试变量声明和类型注解
+global_var: t.CInt = 100
+static_var: t.CStatic | t.CInt = 200
+# 测试冒泡排序
+def test_bubble_sort() -> t.CLong | t.CInt:
+    # 定义一个数组
+    arr: t.CLong | t.CInt[7] = [64, 34, 25, 12, 22, 11, 90]
+    n = len(arr)
+    
+    # 冒泡排序算法
+    for i in range(n):
+        # 最后i个元素已经就位
+        for j in range(0, n-i-1):
+            # 遍历数组，比较相邻元素
+            if arr[j] > arr[j+1]:
+                # 交换元素
+                arr[j], arr[j+1] = arr[j+1], arr[j]
+    
+    # 打印排序后的数组
+    print("排序后的数组:")
+    for i in range(n):
+        print(arr[i])
+    return arr
+
+class a:
+    k1: t.CInt
+    task: t.CStruct | t.CPtr = TASK
+    def __init__(self, led: t.CInt = 0):
+        self.led: t.CInt = led
+    def add(self, x: t.CInt) -> t.CInt:
+        self.led += x
+        return self.led
+    # 测试冒泡排序
+    def test_bubble_sort(self):
+        # 定义一个数组
+        arr: t.CLong | t.CInt[7] = [64, 34, 25, 12, 22, 11, 90]
+        n = len(arr)
+        
+        # 冒泡排序算法
+        for i in range(n):
+            # 最后i个元素已经就位
+            for j in range(0, n-i-1):
+                # 遍历数组，比较相邻元素
+                if arr[j] > arr[j+1]:
+                    # 交换元素
+                    arr[j], arr[j+1] = arr[j+1], arr[j]
+        
+        # 打印排序后的数组
+        print("排序后的数组:")
+        for i in range(n):
+            print(arr[i])
+
+def io_out8(port: t.CUInt8T, value: t.CUInt8T):
+    c.Asm("out %0, %1" % (value, port))
+
+class DLL_STRPICENV(t.CStruct):
+    work: t.CInt[64 * 1024 // 4]
+    free: t.CPtr | FREEINFO[MEMMAN_FREES] = c.State
+    sheets: t.CPtr | t.CStruct | SHEET[MAX_SHEETS] = c.State
+    sheets: t.CPtr | SHEET[MAX_SHEETS] = c.State
+    sheets0: t.CStruct | SHEET[MAX_SHEETS] = c.State
+taskctl: t.CExtern | t.CPtr | TASKCTL = c.State
+task_timer: TIMER | t.CExtern | t.CPtr = c.State
+
+
+def open_constask(sht: t.CPtr | SHEET, memtotal: t.CUnsignedInt) -> c.State | t.CStruct(name=TASK) | t.CPtr: pass
+def open_constask2(sht: t.CPtr | SHEET, memtotal: t.CUnsignedInt) -> c.State | t.CStruct(name=TASK): pass
+
+def info_JPEG(env: t.CPtr | DLL_STRPICENV, info: t.CPtr | t.CInt, size: t.CInt, fp: t.CPtr | t.CUInt8T) -> t.CInt | c.State: pass
+
+def memman_free_4k(man: t.CPtr | t.CStruct | MEMMAN, addr: t.CUnsignedInt, size: t.CUnsignedInt) -> c.State: pass
+
+def sheet_setbuf(sht: t.CPtr | t.CStruct | SHEET, buf: t.CPtr | t.CUnsignedChar, xsize: t.CInt, ysize: t.CInt, col_inv: t.CInt) -> c.State: pass
+
+languages: t.CExtern | t.CInt[MAX_LANGUAGE_NUMBER] = c.State
+
+sht_mouse: t.CPtr | SHEET
+shtctl: t.CPtr | SHTCTL
+
+keytable0: t.CStatic | t.CChar[0x80] = [
+	0,   0,   '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0x08,   0,
+	'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', 0x0a,   0,   'A', 'S',
+	'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'", '`',   0,   '\\', 'Z', 'X', 'C', 'V',
+	'B', 'N', 'M', ',', '.', '/', 0,   '*', 0,   ' ', 0,   0,   0,   0,   0,   0,
+	0,   0,   0,   0,   0,   0,   0,   '7', 0, '9', '-', '4', '5', '6', '+', '1',
+	0, '3', '0', '.', 0,	 0,   0,    0,    0,   0, 0,   0,    0,  0,   0,    0,
+		0,   0,   0,  0,   0,	 0,   0,    0,    0,   0, 0,   0,    0,  0,   0,    0,
+		0,   0,   0,  0x5c, 0,	 0,   0,    0,    0,   0, 0,   0,    0,  0x5c, 0,    0,
+]
+keytable1: t.CStatic | t.CChar[0x80] = [
+	0,   0,   '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', 0x08,   0,
+	'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', 0x0a,   0,   'A', 'S',
+	'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~',   0,   '|', 'Z', 'X', 'C', 'V',
+	'B', 'N', 'M', '<', '>', '?', 0,   '*', 0,   ' ', 0,   0,   0,   0,   0,   0,
+	0,   0,   0,   0,   0,   0,   0,   '7', '8', '9', '-', '4', '5', '6', '+', '1',
+	'2', '3', '0', '.', 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	0,   0,   0,   '_', 0,   0,   0,   0,   0,   0,   0,   0,   0,   '|', 0,   0
+]
+
+
+
+class FIFO32: pass
+
+f: FIFO32
+binfo: t.CPtr | BOOTINFO = t.CType(ADR_BOOTINFO, BOOTINFO, t.CPtr)
+
+finfo: t.CPtr | FILEINFO
+def main() -> t.CInt:
+    c.Ptr(0xec, t.CInt(c.Addr(X)), type=t.CInt | t.CLong)
+    cons_fifo: t.CInt | t.CPtr = 1
+    cons_fifo2: t.CLong | t.CInt = 1
+    if new_mx >= 0:
+        io_sti()
+        sheet_slide(sht_mouse, new_mx, new_my)
+        new_mx = -1
+    elif new_wx != 0x7fffffff:
+        io_sti()
+        sheet_slide(sht, new_wx, new_wy)
+        new_wx = 0x7fffffff
+    else:
+        task_sleep(task_a)
+        io_sti()
+
+    finfo = file_search("HZK16.fnt", t.CType((ADR_DISKIMG + 0x002600), FILEINFO, t.CPtr), 224)
+    init_start(sht_start)
+    file_loadfile(t.CType((ADR_DISKIMG + 0x003e00), t.CChar, t.CPtr))
+    file_loadfile(t.CChar((ADR_DISKIMG + 0x003e00, t.CPtr)))
+
+    buf_start = t.CType(memman_alloc_4k(memman, 450 * 600), t.CUnsignedChar, t.CPtr)
+    shtctl = shtctl_init(memman, binfo.vram, binfo.scrnx, binfo.scrny)
+    keytable0: t.CStatic | t.CChar[0x80] = c.State
+    keytable1: t.CStatic | t.CChar[0x80] = c.State
+    font1: t.CExtern | t.CChar[4096]
+    buf_back: t.CUnsigned | t.CChar | t.CPtr
+    buf_mouse: t.CUnsigned | t.CChar[256][256] | t.CPtr
+
+    memtotal = memtest(0x00400000, 0xbfffffff)
+
+    fifo: FIFO32
+    fifo.task = task_a
+
+    key_leds = (binfo.leds >> 4) & 7
+
+    # 调用冒泡排序测试
+    K = test_bubble_sort()
+
+    s = a(1)
+    p: t.CStruct | t.CPtr | a = a
+    p = c.Addr(s)
+    s.test_bubble_sort(s.k1, p.k1)
+
+    c.Ptr(0x0fec, t.CInt(c.Addr(fifo)), type=t.CInt)
+    io_out8(PIC1_IMR, 0x00400000)
+    p.flags |= 0x20
+    key_win = shtctl.sheets[shtctl.top - 1]
+    key_shift &= ~1
+
+    return 0
+
+=== AST Tree ===
+Module(
+  body=[
+    Import(
+      names=[
+        alias(name='c')]),
+    Import(
+      names=[
+        alias(name='t')]),
+    Import(
+      names=[
+        alias(name='stdio')]),
+    ImportFrom(
+      module='kernel2',
+      names=[
+        alias(name='*')],
+      level=0),
+    AnnAssign(
+      target=Name(id='F1', ctx=Store()),
+      annotation=Attribute(
+        value=Name(id='t', ctx=Load()),
+        attr='CDefine',
+        ctx=Load()),
+      value=UnaryOp(
+        op=USub(),
+        operand=Constant(value=1)),
+      simple=1),
+    FunctionDef(
+      name='keywin_off',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(
+            arg='key_win',
+            annotation=BinOp(
+              left=Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CStruct',
+                  ctx=Load()),
+                args=[],
+                keywords=[
+                  keyword(
+                    arg='name',
+                    value=Constant(value='SHEET'))]),
+              op=BitOr(),
+              right=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load())))],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Pass()],
+      decorator_list=[],
+      returns=BinOp(
+        left=Attribute(
+          value=Name(id='c', ctx=Load()),
+          attr='State',
+          ctx=Load()),
+        op=BitOr(),
+        right=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CVoid',
+          ctx=Load())),
+      type_params=[]),
+    FunctionDef(
+      name='keywin_off2',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(
+            arg='key_win',
+            annotation=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load()),
+              op=BitOr(),
+              right=Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CStruct',
+                  ctx=Load()),
+                args=[],
+                keywords=[
+                  keyword(
+                    arg='name',
+                    value=Constant(value='SHEET'))])))],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Pass()],
+      decorator_list=[],
+      returns=Attribute(
+        value=Name(id='c', ctx=Load()),
+        attr='State',
+        ctx=Load()),
+      type_params=[]),
+    AnnAssign(
+      target=Name(id='MOUSEX', ctx=Store()),
+      annotation=Attribute(
+        value=Name(id='t', ctx=Load()),
+        attr='CInt',
+        ctx=Load()),
+      simple=1),
+    AnnAssign(
+      target=Name(id='keytable0', ctx=Store()),
+      annotation=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CStatic',
+          ctx=Load()),
+        op=BitOr(),
+        right=Subscript(
+          value=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CChar',
+            ctx=Load()),
+          slice=Constant(value=128),
+          ctx=Load())),
+      simple=1),
+    AnnAssign(
+      target=Name(id='buf_start', ctx=Store()),
+      annotation=BinOp(
+        left=BinOp(
+          left=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CUnsigned',
+            ctx=Load()),
+          op=BitOr(),
+          right=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CChar',
+            ctx=Load())),
+        op=BitOr(),
+        right=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CPtr',
+          ctx=Load())),
+      simple=1),
+    FunctionDef(
+      name='io_hlt',
+      args=arguments(
+        posonlyargs=[],
+        args=[],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Pass()],
+      decorator_list=[],
+      returns=Attribute(
+        value=Name(id='c', ctx=Load()),
+        attr='State',
+        ctx=Load()),
+      type_params=[]),
+    FunctionDef(
+      name='test_ptr_operations',
+      args=arguments(
+        posonlyargs=[],
+        args=[],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Expr(
+          value=Call(
+            func=Attribute(
+              value=Name(id='c', ctx=Load()),
+              attr='Ptr',
+              ctx=Load()),
+            args=[
+              Constant(value=4096),
+              Constant(value=42)],
+            keywords=[])),
+        Expr(
+          value=Call(
+            func=Attribute(
+              value=Name(id='c', ctx=Load()),
+              attr='Ptr',
+              ctx=Load()),
+            args=[
+              Constant(value=4096),
+              Constant(value=42)],
+            keywords=[
+              keyword(
+                arg='type',
+                value=Call(
+                  func=Attribute(
+                    value=Name(id='t', ctx=Load()),
+                    attr='CInt',
+                    ctx=Load()),
+                  args=[],
+                  keywords=[]))])),
+        Assign(
+          targets=[
+            Name(id='value', ctx=Store())],
+          value=Call(
+            func=Attribute(
+              value=Name(id='c', ctx=Load()),
+              attr='Ptr',
+              ctx=Load()),
+            args=[
+              Constant(value=4096)],
+            keywords=[])),
+        Assign(
+          targets=[
+            Name(id='value', ctx=Store())],
+          value=Call(
+            func=Attribute(
+              value=Name(id='c', ctx=Load()),
+              attr='Ptr',
+              ctx=Load()),
+            args=[
+              Constant(value=4096)],
+            keywords=[
+              keyword(
+                arg='type',
+                value=Call(
+                  func=Attribute(
+                    value=Name(id='t', ctx=Load()),
+                    attr='CInt',
+                    ctx=Load()),
+                  args=[],
+                  keywords=[]))])),
+        AnnAssign(
+          target=Name(id='var', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CStruct',
+              ctx=Load()),
+            op=BitOr(),
+            right=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CPtr',
+              ctx=Load())),
+          value=Name(id='value', ctx=Load()),
+          simple=1),
+        AnnAssign(
+          target=Name(id='var2', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CStruct',
+              ctx=Load()),
+            op=BitOr(),
+            right=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CPtr',
+              ctx=Load())),
+          value=Call(
+            func=Name(id='value', ctx=Load()),
+            args=[],
+            keywords=[]),
+          simple=1)],
+      decorator_list=[],
+      type_params=[]),
+    FunctionDef(
+      name='test_type_casting',
+      args=arguments(
+        posonlyargs=[],
+        args=[],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Assign(
+          targets=[
+            Name(id='x', ctx=Store())],
+          value=Constant(value=42)),
+        Assign(
+          targets=[
+            Name(id='y', ctx=Store())],
+          value=Call(
+            func=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CType',
+              ctx=Load()),
+            args=[
+              Name(id='x', ctx=Load()),
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CInt',
+                  ctx=Load()),
+                args=[],
+                keywords=[])],
+            keywords=[])),
+        AnnAssign(
+          target=Name(id='z', ctx=Store()),
+          annotation=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CChar',
+            ctx=Load()),
+          value=Call(
+            func=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CType',
+              ctx=Load()),
+            args=[
+              Name(id='x', ctx=Load()),
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CChar',
+                  ctx=Load()),
+                args=[],
+                keywords=[])],
+            keywords=[]),
+          simple=1),
+        Assign(
+          targets=[
+            Name(id='p', ctx=Store())],
+          value=Call(
+            func=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CType',
+              ctx=Load()),
+            args=[
+              Name(id='x', ctx=Load()),
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CUnsigned',
+                  ctx=Load()),
+                args=[],
+                keywords=[]),
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CChar',
+                  ctx=Load()),
+                args=[],
+                keywords=[]),
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CPtr',
+                  ctx=Load()),
+                args=[],
+                keywords=[])],
+            keywords=[])),
+        Assign(
+          targets=[
+            Name(id='q', ctx=Store())],
+          value=Call(
+            func=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CInt',
+              ctx=Load()),
+            args=[
+              Name(id='x', ctx=Load())],
+            keywords=[])),
+        Assign(
+          targets=[
+            Name(id='r', ctx=Store())],
+          value=Call(
+            func=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CChar',
+              ctx=Load()),
+            args=[
+              Name(id='x', ctx=Load())],
+            keywords=[])),
+        If(
+          test=Name(id='x', ctx=Load()),
+          body=[
+            Assign(
+              targets=[
+                Name(id='x', ctx=Store())],
+              value=Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CType',
+                  ctx=Load()),
+                args=[
+                  Name(id='x', ctx=Load()),
+                  Call(
+                    func=Attribute(
+                      value=Name(id='t', ctx=Load()),
+                      attr='CInt',
+                      ctx=Load()),
+                    args=[],
+                    keywords=[])],
+                keywords=[])),
+            If(
+              test=Name(id='x', ctx=Load()),
+              body=[
+                Assign(
+                  targets=[
+                    Name(id='x', ctx=Store())],
+                  value=Call(
+                    func=Attribute(
+                      value=Name(id='t', ctx=Load()),
+                      attr='CType',
+                      ctx=Load()),
+                    args=[
+                      Name(id='x', ctx=Load()),
+                      Call(
+                        func=Attribute(
+                          value=Name(id='t', ctx=Load()),
+                          attr='CInt',
+                          ctx=Load()),
+                        args=[],
+                        keywords=[])],
+                    keywords=[]))],
+              orelse=[])],
+          orelse=[]),
+        If(
+          test=Name(id='x', ctx=Load()),
+          body=[
+            Assign(
+              targets=[
+                Name(id='x', ctx=Store())],
+              value=Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CInt',
+                  ctx=Load()),
+                args=[
+                  Name(id='x', ctx=Load())],
+                keywords=[]))],
+          orelse=[])],
+      decorator_list=[],
+      type_params=[]),
+    AnnAssign(
+      target=Name(id='global_var', ctx=Store()),
+      annotation=Attribute(
+        value=Name(id='t', ctx=Load()),
+        attr='CInt',
+        ctx=Load()),
+      value=Constant(value=100),
+      simple=1),
+    AnnAssign(
+      target=Name(id='static_var', ctx=Store()),
+      annotation=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CStatic',
+          ctx=Load()),
+        op=BitOr(),
+        right=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CInt',
+          ctx=Load())),
+      value=Constant(value=200),
+      simple=1),
+    FunctionDef(
+      name='test_bubble_sort',
+      args=arguments(
+        posonlyargs=[],
+        args=[],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        AnnAssign(
+          target=Name(id='arr', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CLong',
+              ctx=Load()),
+            op=BitOr(),
+            right=Subscript(
+              value=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CInt',
+                ctx=Load()),
+              slice=Constant(value=7),
+              ctx=Load())),
+          value=List(
+            elts=[
+              Constant(value=64),
+              Constant(value=34),
+              Constant(value=25),
+              Constant(value=12),
+              Constant(value=22),
+              Constant(value=11),
+              Constant(value=90)],
+            ctx=Load()),
+          simple=1),
+        Assign(
+          targets=[
+            Name(id='n', ctx=Store())],
+          value=Call(
+            func=Name(id='len', ctx=Load()),
+            args=[
+              Name(id='arr', ctx=Load())],
+            keywords=[])),
+        For(
+          target=Name(id='i', ctx=Store()),
+          iter=Call(
+            func=Name(id='range', ctx=Load()),
+            args=[
+              Name(id='n', ctx=Load())],
+            keywords=[]),
+          body=[
+            For(
+              target=Name(id='j', ctx=Store()),
+              iter=Call(
+                func=Name(id='range', ctx=Load()),
+                args=[
+                  Constant(value=0),
+                  BinOp(
+                    left=BinOp(
+                      left=Name(id='n', ctx=Load()),
+                      op=Sub(),
+                      right=Name(id='i', ctx=Load())),
+                    op=Sub(),
+                    right=Constant(value=1))],
+                keywords=[]),
+              body=[
+                If(
+                  test=Compare(
+                    left=Subscript(
+                      value=Name(id='arr', ctx=Load()),
+                      slice=Name(id='j', ctx=Load()),
+                      ctx=Load()),
+                    ops=[
+                      Gt()],
+                    comparators=[
+                      Subscript(
+                        value=Name(id='arr', ctx=Load()),
+                        slice=BinOp(
+                          left=Name(id='j', ctx=Load()),
+                          op=Add(),
+                          right=Constant(value=1)),
+                        ctx=Load())]),
+                  body=[
+                    Assign(
+                      targets=[
+                        Tuple(
+                          elts=[
+                            Subscript(
+                              value=Name(id='arr', ctx=Load()),
+                              slice=Name(id='j', ctx=Load()),
+                              ctx=Store()),
+                            Subscript(
+                              value=Name(id='arr', ctx=Load()),
+                              slice=BinOp(
+                                left=Name(id='j', ctx=Load()),
+                                op=Add(),
+                                right=Constant(value=1)),
+                              ctx=Store())],
+                          ctx=Store())],
+                      value=Tuple(
+                        elts=[
+                          Subscript(
+                            value=Name(id='arr', ctx=Load()),
+                            slice=BinOp(
+                              left=Name(id='j', ctx=Load()),
+                              op=Add(),
+                              right=Constant(value=1)),
+                            ctx=Load()),
+                          Subscript(
+                            value=Name(id='arr', ctx=Load()),
+                            slice=Name(id='j', ctx=Load()),
+                            ctx=Load())],
+                        ctx=Load()))],
+                  orelse=[])],
+              orelse=[])],
+          orelse=[]),
+        Expr(
+          value=Call(
+            func=Name(id='print', ctx=Load()),
+            args=[
+              Constant(value='排序后的数组:')],
+            keywords=[])),
+        For(
+          target=Name(id='i', ctx=Store()),
+          iter=Call(
+            func=Name(id='range', ctx=Load()),
+            args=[
+              Name(id='n', ctx=Load())],
+            keywords=[]),
+          body=[
+            Expr(
+              value=Call(
+                func=Name(id='print', ctx=Load()),
+                args=[
+                  Subscript(
+                    value=Name(id='arr', ctx=Load()),
+                    slice=Name(id='i', ctx=Load()),
+                    ctx=Load())],
+                keywords=[]))],
+          orelse=[]),
+        Return(
+          value=Name(id='arr', ctx=Load()))],
+      decorator_list=[],
+      returns=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CLong',
+          ctx=Load()),
+        op=BitOr(),
+        right=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CInt',
+          ctx=Load())),
+      type_params=[]),
+    ClassDef(
+      name='a',
+      bases=[],
+      keywords=[],
+      body=[
+        AnnAssign(
+          target=Name(id='k1', ctx=Store()),
+          annotation=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CInt',
+            ctx=Load()),
+          simple=1),
+        AnnAssign(
+          target=Name(id='task', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CStruct',
+              ctx=Load()),
+            op=BitOr(),
+            right=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CPtr',
+              ctx=Load())),
+          value=Name(id='TASK', ctx=Load()),
+          simple=1),
+        FunctionDef(
+          name='__init__',
+          args=arguments(
+            posonlyargs=[],
+            args=[
+              arg(arg='self'),
+              arg(
+                arg='led',
+                annotation=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CInt',
+                  ctx=Load()))],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[
+              Constant(value=0)]),
+          body=[
+            AnnAssign(
+              target=Attribute(
+                value=Name(id='self', ctx=Load()),
+                attr='led',
+                ctx=Store()),
+              annotation=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CInt',
+                ctx=Load()),
+              value=Name(id='led', ctx=Load()),
+              simple=0)],
+          decorator_list=[],
+          type_params=[]),
+        FunctionDef(
+          name='add',
+          args=arguments(
+            posonlyargs=[],
+            args=[
+              arg(arg='self'),
+              arg(
+                arg='x',
+                annotation=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CInt',
+                  ctx=Load()))],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[]),
+          body=[
+            AugAssign(
+              target=Attribute(
+                value=Name(id='self', ctx=Load()),
+                attr='led',
+                ctx=Store()),
+              op=Add(),
+              value=Name(id='x', ctx=Load())),
+            Return(
+              value=Attribute(
+                value=Name(id='self', ctx=Load()),
+                attr='led',
+                ctx=Load()))],
+          decorator_list=[],
+          returns=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CInt',
+            ctx=Load()),
+          type_params=[]),
+        FunctionDef(
+          name='test_bubble_sort',
+          args=arguments(
+            posonlyargs=[],
+            args=[
+              arg(arg='self')],
+            kwonlyargs=[],
+            kw_defaults=[],
+            defaults=[]),
+          body=[
+            AnnAssign(
+              target=Name(id='arr', ctx=Store()),
+              annotation=BinOp(
+                left=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CLong',
+                  ctx=Load()),
+                op=BitOr(),
+                right=Subscript(
+                  value=Attribute(
+                    value=Name(id='t', ctx=Load()),
+                    attr='CInt',
+                    ctx=Load()),
+                  slice=Constant(value=7),
+                  ctx=Load())),
+              value=List(
+                elts=[
+                  Constant(value=64),
+                  Constant(value=34),
+                  Constant(value=25),
+                  Constant(value=12),
+                  Constant(value=22),
+                  Constant(value=11),
+                  Constant(value=90)],
+                ctx=Load()),
+              simple=1),
+            Assign(
+              targets=[
+                Name(id='n', ctx=Store())],
+              value=Call(
+                func=Name(id='len', ctx=Load()),
+                args=[
+                  Name(id='arr', ctx=Load())],
+                keywords=[])),
+            For(
+              target=Name(id='i', ctx=Store()),
+              iter=Call(
+                func=Name(id='range', ctx=Load()),
+                args=[
+                  Name(id='n', ctx=Load())],
+                keywords=[]),
+              body=[
+                For(
+                  target=Name(id='j', ctx=Store()),
+                  iter=Call(
+                    func=Name(id='range', ctx=Load()),
+                    args=[
+                      Constant(value=0),
+                      BinOp(
+                        left=BinOp(
+                          left=Name(id='n', ctx=Load()),
+                          op=Sub(),
+                          right=Name(id='i', ctx=Load())),
+                        op=Sub(),
+                        right=Constant(value=1))],
+                    keywords=[]),
+                  body=[
+                    If(
+                      test=Compare(
+                        left=Subscript(
+                          value=Name(id='arr', ctx=Load()),
+                          slice=Name(id='j', ctx=Load()),
+                          ctx=Load()),
+                        ops=[
+                          Gt()],
+                        comparators=[
+                          Subscript(
+                            value=Name(id='arr', ctx=Load()),
+                            slice=BinOp(
+                              left=Name(id='j', ctx=Load()),
+                              op=Add(),
+                              right=Constant(value=1)),
+                            ctx=Load())]),
+                      body=[
+                        Assign(
+                          targets=[
+                            Tuple(
+                              elts=[
+                                Subscript(
+                                  value=Name(id='arr', ctx=Load()),
+                                  slice=Name(id='j', ctx=Load()),
+                                  ctx=Store()),
+                                Subscript(
+                                  value=Name(id='arr', ctx=Load()),
+                                  slice=BinOp(
+                                    left=Name(id='j', ctx=Load()),
+                                    op=Add(),
+                                    right=Constant(value=1)),
+                                  ctx=Store())],
+                              ctx=Store())],
+                          value=Tuple(
+                            elts=[
+                              Subscript(
+                                value=Name(id='arr', ctx=Load()),
+                                slice=BinOp(
+                                  left=Name(id='j', ctx=Load()),
+                                  op=Add(),
+                                  right=Constant(value=1)),
+                                ctx=Load()),
+                              Subscript(
+                                value=Name(id='arr', ctx=Load()),
+                                slice=Name(id='j', ctx=Load()),
+                                ctx=Load())],
+                            ctx=Load()))],
+                      orelse=[])],
+                  orelse=[])],
+              orelse=[]),
+            Expr(
+              value=Call(
+                func=Name(id='print', ctx=Load()),
+                args=[
+                  Constant(value='排序后的数组:')],
+                keywords=[])),
+            For(
+              target=Name(id='i', ctx=Store()),
+              iter=Call(
+                func=Name(id='range', ctx=Load()),
+                args=[
+                  Name(id='n', ctx=Load())],
+                keywords=[]),
+              body=[
+                Expr(
+                  value=Call(
+                    func=Name(id='print', ctx=Load()),
+                    args=[
+                      Subscript(
+                        value=Name(id='arr', ctx=Load()),
+                        slice=Name(id='i', ctx=Load()),
+                        ctx=Load())],
+                    keywords=[]))],
+              orelse=[])],
+          decorator_list=[],
+          type_params=[])],
+      decorator_list=[],
+      type_params=[]),
+    FunctionDef(
+      name='io_out8',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(
+            arg='port',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CUInt8T',
+              ctx=Load())),
+          arg(
+            arg='value',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CUInt8T',
+              ctx=Load()))],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Expr(
+          value=Call(
+            func=Attribute(
+              value=Name(id='c', ctx=Load()),
+              attr='Asm',
+              ctx=Load()),
+            args=[
+              BinOp(
+                left=Constant(value='out %0, %1'),
+                op=Mod(),
+                right=Tuple(
+                  elts=[
+                    Name(id='value', ctx=Load()),
+                    Name(id='port', ctx=Load())],
+                  ctx=Load()))],
+            keywords=[]))],
+      decorator_list=[],
+      type_params=[]),
+    ClassDef(
+      name='DLL_STRPICENV',
+      bases=[
+        Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CStruct',
+          ctx=Load())],
+      keywords=[],
+      body=[
+        AnnAssign(
+          target=Name(id='work', ctx=Store()),
+          annotation=Subscript(
+            value=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CInt',
+              ctx=Load()),
+            slice=BinOp(
+              left=BinOp(
+                left=Constant(value=64),
+                op=Mult(),
+                right=Constant(value=1024)),
+              op=FloorDiv(),
+              right=Constant(value=4)),
+            ctx=Load()),
+          simple=1),
+        AnnAssign(
+          target=Name(id='free', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CPtr',
+              ctx=Load()),
+            op=BitOr(),
+            right=Subscript(
+              value=Name(id='FREEINFO', ctx=Load()),
+              slice=Name(id='MEMMAN_FREES', ctx=Load()),
+              ctx=Load())),
+          value=Attribute(
+            value=Name(id='c', ctx=Load()),
+            attr='State',
+            ctx=Load()),
+          simple=1),
+        AnnAssign(
+          target=Name(id='sheets', ctx=Store()),
+          annotation=BinOp(
+            left=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load()),
+              op=BitOr(),
+              right=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CStruct',
+                ctx=Load())),
+            op=BitOr(),
+            right=Subscript(
+              value=Name(id='SHEET', ctx=Load()),
+              slice=Name(id='MAX_SHEETS', ctx=Load()),
+              ctx=Load())),
+          value=Attribute(
+            value=Name(id='c', ctx=Load()),
+            attr='State',
+            ctx=Load()),
+          simple=1),
+        AnnAssign(
+          target=Name(id='sheets', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CPtr',
+              ctx=Load()),
+            op=BitOr(),
+            right=Subscript(
+              value=Name(id='SHEET', ctx=Load()),
+              slice=Name(id='MAX_SHEETS', ctx=Load()),
+              ctx=Load())),
+          value=Attribute(
+            value=Name(id='c', ctx=Load()),
+            attr='State',
+            ctx=Load()),
+          simple=1),
+        AnnAssign(
+          target=Name(id='sheets0', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CStruct',
+              ctx=Load()),
+            op=BitOr(),
+            right=Subscript(
+              value=Name(id='SHEET', ctx=Load()),
+              slice=Name(id='MAX_SHEETS', ctx=Load()),
+              ctx=Load())),
+          value=Attribute(
+            value=Name(id='c', ctx=Load()),
+            attr='State',
+            ctx=Load()),
+          simple=1)],
+      decorator_list=[],
+      type_params=[]),
+    AnnAssign(
+      target=Name(id='taskctl', ctx=Store()),
+      annotation=BinOp(
+        left=BinOp(
+          left=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CExtern',
+            ctx=Load()),
+          op=BitOr(),
+          right=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CPtr',
+            ctx=Load())),
+        op=BitOr(),
+        right=Name(id='TASKCTL', ctx=Load())),
+      value=Attribute(
+        value=Name(id='c', ctx=Load()),
+        attr='State',
+        ctx=Load()),
+      simple=1),
+    AnnAssign(
+      target=Name(id='task_timer', ctx=Store()),
+      annotation=BinOp(
+        left=BinOp(
+          left=Name(id='TIMER', ctx=Load()),
+          op=BitOr(),
+          right=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CExtern',
+            ctx=Load())),
+        op=BitOr(),
+        right=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CPtr',
+          ctx=Load())),
+      value=Attribute(
+        value=Name(id='c', ctx=Load()),
+        attr='State',
+        ctx=Load()),
+      simple=1),
+    FunctionDef(
+      name='open_constask',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(
+            arg='sht',
+            annotation=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load()),
+              op=BitOr(),
+              right=Name(id='SHEET', ctx=Load()))),
+          arg(
+            arg='memtotal',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CUnsignedInt',
+              ctx=Load()))],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Pass()],
+      decorator_list=[],
+      returns=BinOp(
+        left=BinOp(
+          left=Attribute(
+            value=Name(id='c', ctx=Load()),
+            attr='State',
+            ctx=Load()),
+          op=BitOr(),
+          right=Call(
+            func=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CStruct',
+              ctx=Load()),
+            args=[],
+            keywords=[
+              keyword(
+                arg='name',
+                value=Name(id='TASK', ctx=Load()))])),
+        op=BitOr(),
+        right=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CPtr',
+          ctx=Load())),
+      type_params=[]),
+    FunctionDef(
+      name='open_constask2',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(
+            arg='sht',
+            annotation=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load()),
+              op=BitOr(),
+              right=Name(id='SHEET', ctx=Load()))),
+          arg(
+            arg='memtotal',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CUnsignedInt',
+              ctx=Load()))],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Pass()],
+      decorator_list=[],
+      returns=BinOp(
+        left=Attribute(
+          value=Name(id='c', ctx=Load()),
+          attr='State',
+          ctx=Load()),
+        op=BitOr(),
+        right=Call(
+          func=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CStruct',
+            ctx=Load()),
+          args=[],
+          keywords=[
+            keyword(
+              arg='name',
+              value=Name(id='TASK', ctx=Load()))])),
+      type_params=[]),
+    FunctionDef(
+      name='info_JPEG',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(
+            arg='env',
+            annotation=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load()),
+              op=BitOr(),
+              right=Name(id='DLL_STRPICENV', ctx=Load()))),
+          arg(
+            arg='info',
+            annotation=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load()),
+              op=BitOr(),
+              right=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CInt',
+                ctx=Load()))),
+          arg(
+            arg='size',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CInt',
+              ctx=Load())),
+          arg(
+            arg='fp',
+            annotation=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load()),
+              op=BitOr(),
+              right=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CUInt8T',
+                ctx=Load())))],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Pass()],
+      decorator_list=[],
+      returns=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CInt',
+          ctx=Load()),
+        op=BitOr(),
+        right=Attribute(
+          value=Name(id='c', ctx=Load()),
+          attr='State',
+          ctx=Load())),
+      type_params=[]),
+    FunctionDef(
+      name='memman_free_4k',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(
+            arg='man',
+            annotation=BinOp(
+              left=BinOp(
+                left=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CPtr',
+                  ctx=Load()),
+                op=BitOr(),
+                right=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CStruct',
+                  ctx=Load())),
+              op=BitOr(),
+              right=Name(id='MEMMAN', ctx=Load()))),
+          arg(
+            arg='addr',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CUnsignedInt',
+              ctx=Load())),
+          arg(
+            arg='size',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CUnsignedInt',
+              ctx=Load()))],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Pass()],
+      decorator_list=[],
+      returns=Attribute(
+        value=Name(id='c', ctx=Load()),
+        attr='State',
+        ctx=Load()),
+      type_params=[]),
+    FunctionDef(
+      name='sheet_setbuf',
+      args=arguments(
+        posonlyargs=[],
+        args=[
+          arg(
+            arg='sht',
+            annotation=BinOp(
+              left=BinOp(
+                left=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CPtr',
+                  ctx=Load()),
+                op=BitOr(),
+                right=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CStruct',
+                  ctx=Load())),
+              op=BitOr(),
+              right=Name(id='SHEET', ctx=Load()))),
+          arg(
+            arg='buf',
+            annotation=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load()),
+              op=BitOr(),
+              right=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CUnsignedChar',
+                ctx=Load()))),
+          arg(
+            arg='xsize',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CInt',
+              ctx=Load())),
+          arg(
+            arg='ysize',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CInt',
+              ctx=Load())),
+          arg(
+            arg='col_inv',
+            annotation=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CInt',
+              ctx=Load()))],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Pass()],
+      decorator_list=[],
+      returns=Attribute(
+        value=Name(id='c', ctx=Load()),
+        attr='State',
+        ctx=Load()),
+      type_params=[]),
+    AnnAssign(
+      target=Name(id='languages', ctx=Store()),
+      annotation=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CExtern',
+          ctx=Load()),
+        op=BitOr(),
+        right=Subscript(
+          value=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CInt',
+            ctx=Load()),
+          slice=Name(id='MAX_LANGUAGE_NUMBER', ctx=Load()),
+          ctx=Load())),
+      value=Attribute(
+        value=Name(id='c', ctx=Load()),
+        attr='State',
+        ctx=Load()),
+      simple=1),
+    AnnAssign(
+      target=Name(id='sht_mouse', ctx=Store()),
+      annotation=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CPtr',
+          ctx=Load()),
+        op=BitOr(),
+        right=Name(id='SHEET', ctx=Load())),
+      simple=1),
+    AnnAssign(
+      target=Name(id='shtctl', ctx=Store()),
+      annotation=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CPtr',
+          ctx=Load()),
+        op=BitOr(),
+        right=Name(id='SHTCTL', ctx=Load())),
+      simple=1),
+    AnnAssign(
+      target=Name(id='keytable0', ctx=Store()),
+      annotation=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CStatic',
+          ctx=Load()),
+        op=BitOr(),
+        right=Subscript(
+          value=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CChar',
+            ctx=Load()),
+          slice=Constant(value=128),
+          ctx=Load())),
+      value=List(
+        elts=[
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value='1'),
+          Constant(value='2'),
+          Constant(value='3'),
+          Constant(value='4'),
+          Constant(value='5'),
+          Constant(value='6'),
+          Constant(value='7'),
+          Constant(value='8'),
+          Constant(value='9'),
+          Constant(value='0'),
+          Constant(value='-'),
+          Constant(value='='),
+          Constant(value=8),
+          Constant(value=0),
+          Constant(value='Q'),
+          Constant(value='W'),
+          Constant(value='E'),
+          Constant(value='R'),
+          Constant(value='T'),
+          Constant(value='Y'),
+          Constant(value='U'),
+          Constant(value='I'),
+          Constant(value='O'),
+          Constant(value='P'),
+          Constant(value='['),
+          Constant(value=']'),
+          Constant(value=10),
+          Constant(value=0),
+          Constant(value='A'),
+          Constant(value='S'),
+          Constant(value='D'),
+          Constant(value='F'),
+          Constant(value='G'),
+          Constant(value='H'),
+          Constant(value='J'),
+          Constant(value='K'),
+          Constant(value='L'),
+          Constant(value=';'),
+          Constant(value="'"),
+          Constant(value='`'),
+          Constant(value=0),
+          Constant(value='\\'),
+          Constant(value='Z'),
+          Constant(value='X'),
+          Constant(value='C'),
+          Constant(value='V'),
+          Constant(value='B'),
+          Constant(value='N'),
+          Constant(value='M'),
+          Constant(value=','),
+          Constant(value='.'),
+          Constant(value='/'),
+          Constant(value=0),
+          Constant(value='*'),
+          Constant(value=0),
+          Constant(value=' '),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value='7'),
+          Constant(value=0),
+          Constant(value='9'),
+          Constant(value='-'),
+          Constant(value='4'),
+          Constant(value='5'),
+          Constant(value='6'),
+          Constant(value='+'),
+          Constant(value='1'),
+          Constant(value=0),
+          Constant(value='3'),
+          Constant(value='0'),
+          Constant(value='.'),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=92),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=92),
+          Constant(value=0),
+          Constant(value=0)],
+        ctx=Load()),
+      simple=1),
+    AnnAssign(
+      target=Name(id='keytable1', ctx=Store()),
+      annotation=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CStatic',
+          ctx=Load()),
+        op=BitOr(),
+        right=Subscript(
+          value=Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CChar',
+            ctx=Load()),
+          slice=Constant(value=128),
+          ctx=Load())),
+      value=List(
+        elts=[
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value='!'),
+          Constant(value='@'),
+          Constant(value='#'),
+          Constant(value='$'),
+          Constant(value='%'),
+          Constant(value='^'),
+          Constant(value='&'),
+          Constant(value='*'),
+          Constant(value='('),
+          Constant(value=')'),
+          Constant(value='_'),
+          Constant(value='+'),
+          Constant(value=8),
+          Constant(value=0),
+          Constant(value='Q'),
+          Constant(value='W'),
+          Constant(value='E'),
+          Constant(value='R'),
+          Constant(value='T'),
+          Constant(value='Y'),
+          Constant(value='U'),
+          Constant(value='I'),
+          Constant(value='O'),
+          Constant(value='P'),
+          Constant(value='{'),
+          Constant(value='}'),
+          Constant(value=10),
+          Constant(value=0),
+          Constant(value='A'),
+          Constant(value='S'),
+          Constant(value='D'),
+          Constant(value='F'),
+          Constant(value='G'),
+          Constant(value='H'),
+          Constant(value='J'),
+          Constant(value='K'),
+          Constant(value='L'),
+          Constant(value=':'),
+          Constant(value='"'),
+          Constant(value='~'),
+          Constant(value=0),
+          Constant(value='|'),
+          Constant(value='Z'),
+          Constant(value='X'),
+          Constant(value='C'),
+          Constant(value='V'),
+          Constant(value='B'),
+          Constant(value='N'),
+          Constant(value='M'),
+          Constant(value='<'),
+          Constant(value='>'),
+          Constant(value='?'),
+          Constant(value=0),
+          Constant(value='*'),
+          Constant(value=0),
+          Constant(value=' '),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value='7'),
+          Constant(value='8'),
+          Constant(value='9'),
+          Constant(value='-'),
+          Constant(value='4'),
+          Constant(value='5'),
+          Constant(value='6'),
+          Constant(value='+'),
+          Constant(value='1'),
+          Constant(value='2'),
+          Constant(value='3'),
+          Constant(value='0'),
+          Constant(value='.'),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value='_'),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value=0),
+          Constant(value='|'),
+          Constant(value=0),
+          Constant(value=0)],
+        ctx=Load()),
+      simple=1),
+    ClassDef(
+      name='FIFO32',
+      bases=[],
+      keywords=[],
+      body=[
+        Pass()],
+      decorator_list=[],
+      type_params=[]),
+    AnnAssign(
+      target=Name(id='f', ctx=Store()),
+      annotation=Name(id='FIFO32', ctx=Load()),
+      simple=1),
+    AnnAssign(
+      target=Name(id='binfo', ctx=Store()),
+      annotation=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CPtr',
+          ctx=Load()),
+        op=BitOr(),
+        right=Name(id='BOOTINFO', ctx=Load())),
+      value=Call(
+        func=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CType',
+          ctx=Load()),
+        args=[
+          Name(id='ADR_BOOTINFO', ctx=Load()),
+          Name(id='BOOTINFO', ctx=Load()),
+          Attribute(
+            value=Name(id='t', ctx=Load()),
+            attr='CPtr',
+            ctx=Load())],
+        keywords=[]),
+      simple=1),
+    AnnAssign(
+      target=Name(id='finfo', ctx=Store()),
+      annotation=BinOp(
+        left=Attribute(
+          value=Name(id='t', ctx=Load()),
+          attr='CPtr',
+          ctx=Load()),
+        op=BitOr(),
+        right=Name(id='FILEINFO', ctx=Load())),
+      simple=1),
+    FunctionDef(
+      name='main',
+      args=arguments(
+        posonlyargs=[],
+        args=[],
+        kwonlyargs=[],
+        kw_defaults=[],
+        defaults=[]),
+      body=[
+        Expr(
+          value=Call(
+            func=Attribute(
+              value=Name(id='c', ctx=Load()),
+              attr='Ptr',
+              ctx=Load()),
+            args=[
+              Constant(value=236),
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CInt',
+                  ctx=Load()),
+                args=[
+                  Call(
+                    func=Attribute(
+                      value=Name(id='c', ctx=Load()),
+                      attr='Addr',
+                      ctx=Load()),
+                    args=[
+                      Name(id='X', ctx=Load())],
+                    keywords=[])],
+                keywords=[])],
+            keywords=[
+              keyword(
+                arg='type',
+                value=BinOp(
+                  left=Attribute(
+                    value=Name(id='t', ctx=Load()),
+                    attr='CInt',
+                    ctx=Load()),
+                  op=BitOr(),
+                  right=Attribute(
+                    value=Name(id='t', ctx=Load()),
+                    attr='CLong',
+                    ctx=Load())))])),
+        AnnAssign(
+          target=Name(id='cons_fifo', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CInt',
+              ctx=Load()),
+            op=BitOr(),
+            right=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CPtr',
+              ctx=Load())),
+          value=Constant(value=1),
+          simple=1),
+        AnnAssign(
+          target=Name(id='cons_fifo2', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CLong',
+              ctx=Load()),
+            op=BitOr(),
+            right=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CInt',
+              ctx=Load())),
+          value=Constant(value=1),
+          simple=1),
+        If(
+          test=Compare(
+            left=Name(id='new_mx', ctx=Load()),
+            ops=[
+              GtE()],
+            comparators=[
+              Constant(value=0)]),
+          body=[
+            Expr(
+              value=Call(
+                func=Name(id='io_sti', ctx=Load()),
+                args=[],
+                keywords=[])),
+            Expr(
+              value=Call(
+                func=Name(id='sheet_slide', ctx=Load()),
+                args=[
+                  Name(id='sht_mouse', ctx=Load()),
+                  Name(id='new_mx', ctx=Load()),
+                  Name(id='new_my', ctx=Load())],
+                keywords=[])),
+            Assign(
+              targets=[
+                Name(id='new_mx', ctx=Store())],
+              value=UnaryOp(
+                op=USub(),
+                operand=Constant(value=1)))],
+          orelse=[
+            If(
+              test=Compare(
+                left=Name(id='new_wx', ctx=Load()),
+                ops=[
+                  NotEq()],
+                comparators=[
+                  Constant(value=2147483647)]),
+              body=[
+                Expr(
+                  value=Call(
+                    func=Name(id='io_sti', ctx=Load()),
+                    args=[],
+                    keywords=[])),
+                Expr(
+                  value=Call(
+                    func=Name(id='sheet_slide', ctx=Load()),
+                    args=[
+                      Name(id='sht', ctx=Load()),
+                      Name(id='new_wx', ctx=Load()),
+                      Name(id='new_wy', ctx=Load())],
+                    keywords=[])),
+                Assign(
+                  targets=[
+                    Name(id='new_wx', ctx=Store())],
+                  value=Constant(value=2147483647))],
+              orelse=[
+                Expr(
+                  value=Call(
+                    func=Name(id='task_sleep', ctx=Load()),
+                    args=[
+                      Name(id='task_a', ctx=Load())],
+                    keywords=[])),
+                Expr(
+                  value=Call(
+                    func=Name(id='io_sti', ctx=Load()),
+                    args=[],
+                    keywords=[]))])]),
+        Assign(
+          targets=[
+            Name(id='finfo', ctx=Store())],
+          value=Call(
+            func=Name(id='file_search', ctx=Load()),
+            args=[
+              Constant(value='HZK16.fnt'),
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CType',
+                  ctx=Load()),
+                args=[
+                  BinOp(
+                    left=Name(id='ADR_DISKIMG', ctx=Load()),
+                    op=Add(),
+                    right=Constant(value=9728)),
+                  Name(id='FILEINFO', ctx=Load()),
+                  Attribute(
+                    value=Name(id='t', ctx=Load()),
+                    attr='CPtr',
+                    ctx=Load())],
+                keywords=[]),
+              Constant(value=224)],
+            keywords=[])),
+        Expr(
+          value=Call(
+            func=Name(id='init_start', ctx=Load()),
+            args=[
+              Name(id='sht_start', ctx=Load())],
+            keywords=[])),
+        Expr(
+          value=Call(
+            func=Name(id='file_loadfile', ctx=Load()),
+            args=[
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CType',
+                  ctx=Load()),
+                args=[
+                  BinOp(
+                    left=Name(id='ADR_DISKIMG', ctx=Load()),
+                    op=Add(),
+                    right=Constant(value=15872)),
+                  Attribute(
+                    value=Name(id='t', ctx=Load()),
+                    attr='CChar',
+                    ctx=Load()),
+                  Attribute(
+                    value=Name(id='t', ctx=Load()),
+                    attr='CPtr',
+                    ctx=Load())],
+                keywords=[])],
+            keywords=[])),
+        Expr(
+          value=Call(
+            func=Name(id='file_loadfile', ctx=Load()),
+            args=[
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CChar',
+                  ctx=Load()),
+                args=[
+                  Tuple(
+                    elts=[
+                      BinOp(
+                        left=Name(id='ADR_DISKIMG', ctx=Load()),
+                        op=Add(),
+                        right=Constant(value=15872)),
+                      Attribute(
+                        value=Name(id='t', ctx=Load()),
+                        attr='CPtr',
+                        ctx=Load())],
+                    ctx=Load())],
+                keywords=[])],
+            keywords=[])),
+        Assign(
+          targets=[
+            Name(id='buf_start', ctx=Store())],
+          value=Call(
+            func=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CType',
+              ctx=Load()),
+            args=[
+              Call(
+                func=Name(id='memman_alloc_4k', ctx=Load()),
+                args=[
+                  Name(id='memman', ctx=Load()),
+                  BinOp(
+                    left=Constant(value=450),
+                    op=Mult(),
+                    right=Constant(value=600))],
+                keywords=[]),
+              Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CUnsignedChar',
+                ctx=Load()),
+              Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load())],
+            keywords=[])),
+        Assign(
+          targets=[
+            Name(id='shtctl', ctx=Store())],
+          value=Call(
+            func=Name(id='shtctl_init', ctx=Load()),
+            args=[
+              Name(id='memman', ctx=Load()),
+              Attribute(
+                value=Name(id='binfo', ctx=Load()),
+                attr='vram',
+                ctx=Load()),
+              Attribute(
+                value=Name(id='binfo', ctx=Load()),
+                attr='scrnx',
+                ctx=Load()),
+              Attribute(
+                value=Name(id='binfo', ctx=Load()),
+                attr='scrny',
+                ctx=Load())],
+            keywords=[])),
+        AnnAssign(
+          target=Name(id='keytable0', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CStatic',
+              ctx=Load()),
+            op=BitOr(),
+            right=Subscript(
+              value=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CChar',
+                ctx=Load()),
+              slice=Constant(value=128),
+              ctx=Load())),
+          value=Attribute(
+            value=Name(id='c', ctx=Load()),
+            attr='State',
+            ctx=Load()),
+          simple=1),
+        AnnAssign(
+          target=Name(id='keytable1', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CStatic',
+              ctx=Load()),
+            op=BitOr(),
+            right=Subscript(
+              value=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CChar',
+                ctx=Load()),
+              slice=Constant(value=128),
+              ctx=Load())),
+          value=Attribute(
+            value=Name(id='c', ctx=Load()),
+            attr='State',
+            ctx=Load()),
+          simple=1),
+        AnnAssign(
+          target=Name(id='font1', ctx=Store()),
+          annotation=BinOp(
+            left=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CExtern',
+              ctx=Load()),
+            op=BitOr(),
+            right=Subscript(
+              value=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CChar',
+                ctx=Load()),
+              slice=Constant(value=4096),
+              ctx=Load())),
+          simple=1),
+        AnnAssign(
+          target=Name(id='buf_back', ctx=Store()),
+          annotation=BinOp(
+            left=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CUnsigned',
+                ctx=Load()),
+              op=BitOr(),
+              right=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CChar',
+                ctx=Load())),
+            op=BitOr(),
+            right=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CPtr',
+              ctx=Load())),
+          simple=1),
+        AnnAssign(
+          target=Name(id='buf_mouse', ctx=Store()),
+          annotation=BinOp(
+            left=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CUnsigned',
+                ctx=Load()),
+              op=BitOr(),
+              right=Subscript(
+                value=Subscript(
+                  value=Attribute(
+                    value=Name(id='t', ctx=Load()),
+                    attr='CChar',
+                    ctx=Load()),
+                  slice=Constant(value=256),
+                  ctx=Load()),
+                slice=Constant(value=256),
+                ctx=Load())),
+            op=BitOr(),
+            right=Attribute(
+              value=Name(id='t', ctx=Load()),
+              attr='CPtr',
+              ctx=Load())),
+          simple=1),
+        Assign(
+          targets=[
+            Name(id='memtotal', ctx=Store())],
+          value=Call(
+            func=Name(id='memtest', ctx=Load()),
+            args=[
+              Constant(value=4194304),
+              Constant(value=3221225471)],
+            keywords=[])),
+        AnnAssign(
+          target=Name(id='fifo', ctx=Store()),
+          annotation=Name(id='FIFO32', ctx=Load()),
+          simple=1),
+        Assign(
+          targets=[
+            Attribute(
+              value=Name(id='fifo', ctx=Load()),
+              attr='task',
+              ctx=Store())],
+          value=Name(id='task_a', ctx=Load())),
+        Assign(
+          targets=[
+            Name(id='key_leds', ctx=Store())],
+          value=BinOp(
+            left=BinOp(
+              left=Attribute(
+                value=Name(id='binfo', ctx=Load()),
+                attr='leds',
+                ctx=Load()),
+              op=RShift(),
+              right=Constant(value=4)),
+            op=BitAnd(),
+            right=Constant(value=7))),
+        Assign(
+          targets=[
+            Name(id='K', ctx=Store())],
+          value=Call(
+            func=Name(id='test_bubble_sort', ctx=Load()),
+            args=[],
+            keywords=[])),
+        Assign(
+          targets=[
+            Name(id='s', ctx=Store())],
+          value=Call(
+            func=Name(id='a', ctx=Load()),
+            args=[
+              Constant(value=1)],
+            keywords=[])),
+        AnnAssign(
+          target=Name(id='p', ctx=Store()),
+          annotation=BinOp(
+            left=BinOp(
+              left=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CStruct',
+                ctx=Load()),
+              op=BitOr(),
+              right=Attribute(
+                value=Name(id='t', ctx=Load()),
+                attr='CPtr',
+                ctx=Load())),
+            op=BitOr(),
+            right=Name(id='a', ctx=Load())),
+          value=Name(id='a', ctx=Load()),
+          simple=1),
+        Assign(
+          targets=[
+            Name(id='p', ctx=Store())],
+          value=Call(
+            func=Attribute(
+              value=Name(id='c', ctx=Load()),
+              attr='Addr',
+              ctx=Load()),
+            args=[
+              Name(id='s', ctx=Load())],
+            keywords=[])),
+        Expr(
+          value=Call(
+            func=Attribute(
+              value=Name(id='s', ctx=Load()),
+              attr='test_bubble_sort',
+              ctx=Load()),
+            args=[
+              Attribute(
+                value=Name(id='s', ctx=Load()),
+                attr='k1',
+                ctx=Load()),
+              Attribute(
+                value=Name(id='p', ctx=Load()),
+                attr='k1',
+                ctx=Load())],
+            keywords=[])),
+        Expr(
+          value=Call(
+            func=Attribute(
+              value=Name(id='c', ctx=Load()),
+              attr='Ptr',
+              ctx=Load()),
+            args=[
+              Constant(value=4076),
+              Call(
+                func=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CInt',
+                  ctx=Load()),
+                args=[
+                  Call(
+                    func=Attribute(
+                      value=Name(id='c', ctx=Load()),
+                      attr='Addr',
+                      ctx=Load()),
+                    args=[
+                      Name(id='fifo', ctx=Load())],
+                    keywords=[])],
+                keywords=[])],
+            keywords=[
+              keyword(
+                arg='type',
+                value=Attribute(
+                  value=Name(id='t', ctx=Load()),
+                  attr='CInt',
+                  ctx=Load()))])),
+        Expr(
+          value=Call(
+            func=Name(id='io_out8', ctx=Load()),
+            args=[
+              Name(id='PIC1_IMR', ctx=Load()),
+              Constant(value=4194304)],
+            keywords=[])),
+        AugAssign(
+          target=Attribute(
+            value=Name(id='p', ctx=Load()),
+            attr='flags',
+            ctx=Store()),
+          op=BitOr(),
+          value=Constant(value=32)),
+        Assign(
+          targets=[
+            Name(id='key_win', ctx=Store())],
+          value=Subscript(
+            value=Attribute(
+              value=Name(id='shtctl', ctx=Load()),
+              attr='sheets',
+              ctx=Load()),
+            slice=BinOp(
+              left=Attribute(
+                value=Name(id='shtctl', ctx=Load()),
+                attr='top',
+                ctx=Load()),
+              op=Sub(),
+              right=Constant(value=1)),
+            ctx=Load())),
+        AugAssign(
+          target=Name(id='key_shift', ctx=Store()),
+          op=BitAnd(),
+          value=UnaryOp(
+            op=Invert(),
+            operand=Constant(value=1))),
+        Return(
+          value=Constant(value=0))],
+      decorator_list=[],
+      returns=Attribute(
+        value=Name(id='t', ctx=Load()),
+        attr='CInt',
+        ctx=Load()),
+      type_params=[])],
+  type_ignores=[])
+=== Generated Code ===
+#include <stdio.h>
+#include "kernel2.h" // from kernel2 import *
+#define F1 -1
+int MOUSEX;
+static char keytable0[128];
+unsigned char* buf_start;
+int global_var = 100;
+static int static_var = 200;
+struct a {
+    int k1;
+    struct TASK* task;
+    int led;
+};
+struct DLL_STRPICENV {
+    int work[((64 * 1024) / 4)];
+    struct FREEINFO *free[MEMMAN_FREES];
+    struct SHEET *sheets[MAX_SHEETS];
+    struct SHEET *sheets[MAX_SHEETS];
+    struct SHEET sheets0[MAX_SHEETS];
+};
+extern struct TASKCTL* taskctl;
+extern struct TIMER* task_timer;
+extern int languages[MAX_LANGUAGE_NUMBER];
+struct SHEET* sht_mouse;
+struct SHTCTL* shtctl;
+static char keytable0[128] = {0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 8, 0, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', 10, 0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', '\'', '`', 0, '\\', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 0, '*', 0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', 0, '9', '-', '4', '5', '6', '+', '1', 0, '3', '0', '.', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 92, 0, 0, 0, 0, 0, 0, 0, 0, 0, 92, 0, 0};
+static char keytable1[128] = {0, 0, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', 8, 0, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', 10, 0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~', 0, '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, '*', 0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '_', 0, 0, 0, 0, 0, 0, 0, 0, 0, '|', 0, 0};
+struct FIFO32 {
+};
+struct FIFO32 f;
+struct BOOTINFO* binfo = ((struct BOOTINFO *)ADR_BOOTINFO);
+struct FILEINFO* finfo;
+void keywin_off(struct SHEET* key_win);
+void keywin_off2(struct SHEET* key_win);
+void io_hlt(void);
+void test_ptr_operations(void) {
+    *((void *)4096) = 42;
+    *((int*)4096) = 42;
+    int value = ((void *)4096);
+    value = ((int*)4096);
+    struct value* var;
+    struct value* var2;
+}
+void test_type_casting(void) {
+    int x = 42;
+    int y = ((int)x);
+    char z = ((char)x);
+    int p = ((unsigned char *)x);
+    int q = ((int)x);
+    int r = ((char)x);
+    if (x) {
+        x = ((int)x);
+        if (x) {
+            x = ((int)x);
+        }
+    }
+    if (x) {
+        x = ((int)x);
+    }
+}
+long int test_bubble_sort(void) {
+    long int arr[7] = {64, 34, 25, 12, 22, 11, 90};
+    int n = (sizeof(arr) / sizeof(arr[0]));
+    for (int i = 0; i < n; i += 1) {
+        for (int j = 0; j < ((n - i) - 1); j += 1) {
+            if ((arr[j] > arr[(j + 1)])) {
+                int temp;
+                temp = arr[j];
+                arr[j] = arr[(j + 1)];
+                arr[(j + 1)] = temp;
+            }
+        }
+    }
+    printf("排序后的数组:");
+    printf("
+");
+    for (int i = 0; i < n; i += 1) {
+        printf("%d
+", arr[i]);
+    }
+    return arr;
+}
+void a____init__(struct a* self, int led) {
+    self->led = led;
+}
+int a__add(struct a* self, int x) {
+    self->led += x;
+    return self->led;
+}
+void a__test_bubble_sort(struct a* self) {
+    long int arr[7] = {64, 34, 25, 12, 22, 11, 90};
+    int n = (sizeof(arr) / sizeof(arr[0]));
+    for (int i = 0; i < n; i += 1) {
+        for (int j = 0; j < ((n - i) - 1); j += 1) {
+            if ((arr[j] > arr[(j + 1)])) {
+                int temp;
+                temp = arr[j];
+                arr[j] = arr[(j + 1)];
+                arr[(j + 1)] = temp;
+            }
+        }
+    }
+    printf("排序后的数组:");
+    printf("
+");
+    for (int i = 0; i < n; i += 1) {
+        printf("%d
+", arr[i]);
+    }
+}
+void io_out8(uint8_t port, uint8_t value) {
+    asm volatile ("out %0, %1" : : "a"(value), "d"(port));
+}
+struct TASK* open_constask(struct SHEET* sht, unsigned int memtotal);
+struct TASK open_constask2(struct SHEET* sht, unsigned int memtotal);
+int info_JPEG(struct DLL_STRPICENV* env, int* info, int size, uint8_t* fp);
+void memman_free_4k(struct MEMMAN* man, unsigned int addr, unsigned int size);
+void sheet_setbuf(struct SHEET* sht, unsigned char* buf, int xsize, int ysize, int col_inv);
+int main(void) {
+    *((long int*)236) = ((int)&X);
+    int* cons_fifo = 1;
+    long int cons_fifo2 = 1;
+    if ((new_mx >= 0)) {
+        io_sti();
+        sheet_slide(sht_mouse, new_mx, new_my);
+        int new_mx = -1;
+    }
+    else if ((new_wx != 2147483647)) {
+        io_sti();
+        sheet_slide(sht, new_wx, new_wy);
+        int new_wx = 2147483647;
+    }
+    else {
+        task_sleep(task_a);
+        io_sti();
+    }
+    finfo = file_search("HZK16.fnt", ((struct FILEINFO *)(ADR_DISKIMG + 9728)), 224);
+    init_start(sht_start);
+    file_loadfile(((char *)(ADR_DISKIMG + 15872)));
+    file_loadfile(((char *)(ADR_DISKIMG + 15872)));
+    buf_start = ((unsigned char *)memman_alloc_4k(memman, (450 * 600)));
+    shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
+    static char keytable0[128];
+    static char keytable1[128];
+    extern char font1[4096];
+    unsigned char* buf_back;
+    unsigned char* buf_mouse[256][256];
+    int memtotal = memtest(4194304, 3221225471);
+    struct FIFO32 fifo;
+    fifo.task = task_a;
+    int key_leds = ((binfo->leds >> 4) & 7);
+    long int K = test_bubble_sort();
+    struct a s;
+    a____init__(&s, 1);
+    struct a* p;
+    p = &s;
+    a__test_bubble_sort(&s, s.k1, p->k1);
+    *((int*)4076) = ((int)&fifo);
+    io_out8(PIC1_IMR, 4194304);
+    p->flags |= 32;
+    int key_win = shtctl->sheets[(shtctl->top - 1)];
+    key_shift &= ~1;
+    return 0;
+}
