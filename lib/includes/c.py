@@ -62,3 +62,12 @@ class Ptr:
         self.addr = addr
         self.value = value
         self.type = type
+
+class Cast:
+    def __init__(self, ptr):
+        self.ptr = ptr
+
+class Set:
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value

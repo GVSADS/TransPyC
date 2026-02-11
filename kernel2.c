@@ -10,7 +10,7 @@
       \  \:\   \  \:\      \  \:\/:/  
        \__\/    \  \:\      \  \::/   
                  \__\/       \__\/    
-Copyright© GVSDS Team
+Copyright GVSDS Team
 Actor TermiNexus
 
 */
@@ -114,7 +114,7 @@ void SAIBMain(void) {
     int new_wy = 0;
     struct MOUSE_DEC mdec;
     unsigned char* buf_back;
-    unsigned char* buf_mouse[256][256];
+    unsigned char buf_mouse[256];
     key_shift = 0;
     key_leds = ((binfo->leds >> 4) & 7);
     keycmd_wait = -1;
@@ -148,7 +148,7 @@ void SAIBMain(void) {
     timer_init(timer_systime, &fifo, 100);
     timer_settime(timer_systime, 100);
     sht_back = sheet_alloc(shtctl);
-    int buf_back = ((unsigned char *)memman_alloc_4k(memman, (binfo->scrnx * binfo->scrny)));
+    buf_back = ((unsigned char *)memman_alloc_4k(memman, (binfo->scrnx * binfo->scrny)));
     sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);
     init_desktop(buf_back, binfo->scrnx, binfo->scrny);
     sht_start = sheet_alloc(shtctl);
@@ -237,12 +237,12 @@ void SAIBMain(void) {
                 else {
                     s[0] = 0;
                 }
-                if ((("A" <= s[0])) && ((s[0] <= "Z"))) {
+                if ((('A' <= s[0])) && ((s[0] <= 'Z'))) {
                     if (((((key_leds & 4) == 0)) && ((key_shift == 0))) || ((((key_leds & 4) != 0)) && ((key_shift != 0)))) {
                     }
                 }
                 if (((s[0] != 0)) && ((key_win != 0))) {
-                    fifo32_put(&key_win->task->fifo, (s[0] + 256));
+                    fifo32_put(&key_win->task.fifo, (s[0] + 256));
                 }
                 if (((i == (256 + 15))) && ((key_win != 0))) {
                     keywin_off(key_win);
@@ -343,7 +343,7 @@ void SAIBMain(void) {
                     }
                     if (((mdec.btn & 1) != 0)) {
                         if ((mmx < 0)) {
-                            for (int j = (shtctl->top - 1); j < 0; j += -1) {
+                            for (int j = (shtctl->top - 1); j > 0; j += -1) {
                                 sht = shtctl->sheets[j];
                                 x = (mx - sht->vx0);
                                 y = (my - sht->vy0);
@@ -409,7 +409,7 @@ void SAIBMain(void) {
                     close_console((shtctl->sheets0 + (i - 768)));
                 }
                 else if (((1024 <= i)) && ((i <= 2023))) {
-                    close_constask((taskctl->tasks0 + (i - 1024)));
+                    close_constask((taskctl.tasks0 + (i - 1024)));
                 }
                 else {
                     if (((2024 <= i)) && ((i <= 2279))) {
@@ -433,21 +433,22 @@ void SAIBMain(void) {
 void keywin_off(struct SHEET* key_win) {
     change_wtitle8(key_win, 0);
     if (((key_win->flags & 32) != 0)) {
-        fifo32_put(&key_win->task->fifo, 3);
+        fifo32_put(&key_win->task.fifo, 3);
     }
     return;
 }
 void keywin_on(struct SHEET* key_win) {
     change_wtitle8(key_win, 1);
     if (((key_win->flags & 32) != 0)) {
-        fifo32_put(&key_win->task->fifo, 2);
+        fifo32_put(&key_win->task.fifo, 2);
+        fifo32_put(&key_win->task2.fifo, 2);
     }
     return;
 }
 struct TASK* open_constask(struct SHEET* sht, unsigned int memtotal) {
-    struct MEMMAN* memman;
-    struct TASK* task;
-    int cons_fifo = ((int *)memman_alloc_4k(memman, (128 * 4)));
+    struct MEMMAN* memman = ((struct MEMMAN *)MEMMAN_ADDR);
+    struct TASK* task = task_alloc();
+    int* cons_fifo = ((int *)memman_alloc_4k(memman, (128 * 4)));
     task->cons_stack = memman_alloc_4k(memman, (64 * 1024));
     task->tss.esp = ((task->cons_stack + (64 * 1024)) - 12);
     task->tss.eip = ((int)&console_task);
@@ -462,4 +463,38 @@ struct TASK* open_constask(struct SHEET* sht, unsigned int memtotal) {
     task_run(task, 2, 2);
     fifo32_init(&task->fifo, 128, cons_fifo, task);
     return task;
+}
+struct SHEET* open_console(struct SHTCTL* shtctl, unsigned int memtotal) {
+    int i = 0;
+    int j = 0;
+    struct MEMMAN* memman = ((struct MEMMAN *)MEMMAN_ADDR);
+    struct SHEET* sht = sheet_alloc(shtctl);
+    unsigned char* buf = ((unsigned char *)memman_alloc_4k(memman, (525 * 479)));
+    sheet_setbuf(sht, buf, 525, 479, 255);
+    make_window8(buf, 525, 479, "Cmd.exw(System Internal storage)", 0);
+    make_textbox8(sht, 3, 24, 519, 452, COL8_000000);
+    for (int i = 0; i < 16; i += 1) {
+        for (int j = 0; j < 16; j += 1) {
+            buf[((((i + 4) * 525) + j) + 6)] = cmdico[i][j];
+        }
+    }
+    sht->task = open_constask(sht, memtotal);
+    sht->flags |= 32;
+    return sht;
+}
+void close_constask(struct TASK* task) {
+    struct MEMMAN* memman = ((struct MEMMAN *)MEMMAN_ADDR);
+    task_sleep(task);
+    memman_free_4k(memman, task->cons_stack, (64 * 1024));
+    memman_free_4k(memman, ((int)task->fifo.buf), (525 * 4));
+    task->flags = 0;
+    return;
+}
+void close_console(struct SHEET* sht) {
+    struct MEMMAN* memman = ((struct MEMMAN *)MEMMAN_ADDR);
+    struct TASK* task = sht->task;
+    memman_free_4k(memman, ((int)sht->buf), (770 * 655));
+    sheet_free(sht);
+    close_constask(task);
+    return;
 }

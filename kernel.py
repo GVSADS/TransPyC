@@ -399,6 +399,7 @@ def keywin_on(key_win: SHEET | t.CPtr):
     change_wtitle8(key_win, 1)
     if (key_win.flags & 0x20) != 0:
         fifo32_put(c.Addr(key_win.task.fifo), 2)
+        fifo32_put(c.Addr(key_win.task2.fifo), 2)
     return
 
 def open_constask(sht: SHEET | t.CPtr, memtotal: t.CUnsignedInt) -> t.CPtr | TASK:
@@ -444,7 +445,7 @@ def open_console(shtctl: SHTCTL | t.CPtr, memtotal: t.CUnsignedInt) -> SHEET | t
     j: t.CInt = 0
     memman: MEMMAN | t.CPtr = t.CType(MEMMAN_ADDR, MEMMAN, t.CPtr)
     sht: SHEET | t.CPtr = sheet_alloc(shtctl)
-    buf: t.CUnsignedChar | t.CPtr = (unsigned char *) memman_alloc_4k(memman, 525 * 479)
+    buf: t.CUnsignedChar | t.CPtr = t.CUnsignedChar(memman_alloc_4k(memman, 525 * 479), t.CPtr)
     sheet_setbuf(sht, buf, 525, 479, 255)
     make_window8(buf, 525, 479, "Cmd.exw(System Internal storage)", 0)
     make_textbox8(sht, 3, 24, 519, 452, COL8_000000)
@@ -454,3 +455,19 @@ def open_console(shtctl: SHTCTL | t.CPtr, memtotal: t.CUnsignedInt) -> SHEET | t
     sht.task = open_constask(sht, memtotal)
     sht.flags |= 0x20
     return sht
+
+def close_constask(task: TASK | t.CPtr):
+    memman: MEMMAN | t.CPtr = t.CType(MEMMAN_ADDR, MEMMAN, t.CPtr)
+    task_sleep(task)
+    memman_free_4k(memman, task.cons_stack, 64 * 1024)
+    memman_free_4k(memman, t.CInt(task.fifo.buf), 525 * 4)
+    task.flags = 0
+    return
+
+def close_console(sht: SHEET | t.CPtr):
+    memman: MEMMAN | t.CPtr = t.CType(MEMMAN_ADDR, MEMMAN, t.CPtr)
+    task: TASK | t.CPtr = sht.task
+    memman_free_4k(memman, t.CInt(sht.buf), 770 * 655)
+    sheet_free(sht)
+    close_constask(task)
+    return

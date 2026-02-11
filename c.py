@@ -62,3 +62,7 @@ class Ptr:
         self.addr = addr
         self.value = value
         self.type = type
+
+class Cast:
+    def __init__(self, ptr):
+        self.ptr = ptr

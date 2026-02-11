@@ -219,6 +219,12 @@ class CPtr(CType):
         self.CName = '*'
         super().__init__(value)
 
+class CArrayPtr(CType):
+    """数组指针类型，用于声明指向数组的指针，如 char (*ptr)[16]"""
+    def __init__(self, value=None):
+        self.CName = '(*)'  # 特殊标记表示数组指针
+        super().__init__(value)
+
 class CDefine(CType):
     def __init__(self, value=None):
         self.CName = '#define'
