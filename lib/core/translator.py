@@ -18,6 +18,52 @@ from lib.utils.helpers import (
     detect_file_type, extract_array_size, 
     check_storage_class, build_array_initialization
 )
+from lib.core.Handles import (
+    ImportHandle, FunctionHandle, ClassHandle,
+    AssignHandle, AugAssignHandle, MatchHandle,
+    IfHandle, ForHandle, WhileHandle,
+    AnnAssignHandle, TSpecialCallHandle, CSpecialCallHandle
+)
+
+# =============================================================================
+# 类型常量定义
+# =============================================================================
+
+# Python 内置类型映射到 C 类型
+PYTHON_BUILTIN_TYPES = {
+    'int': 'int',
+    'str': 'char*',
+    'bool': 'bool',
+    'float': 'float',
+    'double': 'double',
+    'list': 'void*',
+    'dict': 'void*',
+    'set': 'void*',
+    'tuple': 'void*'
+}
+
+# 基本 C 类型（用于类型检查）
+BASIC_C_TYPES = [
+    'char', 'int', 'short', 'long', 'float', 'double',
+    'unsigned char', 'unsigned int', 'unsigned short', 'unsigned long'
+]
+
+# t 模块定义的类型（用于类型检查）
+T_MODULE_TYPES = [
+    'CChar', 'CUnsignedChar', 'CInt', 'CUnsignedInt',
+    'CShort', 'CUnsignedShort', 'CLong', 'CUnsignedLong',
+    'CFloat', 'CDouble', 'CVoid', 'CPtr'
+]
+
+# t 模块所有类型（用于 HandleTSpecialCall）
+T_ALL_TYPES = [
+    'CInt', 'CChar', 'CShort', 'CLong', 'CFloat', 'CDouble', 'CVoid',
+    'CUnsigned', 'CUnsignedChar', 'CUnsignedInt', 'CUnsignedShort', 'CUnsignedLong',
+    'CSignedChar', 'CSizeT', 'CInt8T', 'CInt16T', 'CInt32T', 'CInt64T',
+    'CUInt8T', 'CUInt16T', 'CUInt32T', 'CUInt64T',
+    'CIntPtrT', 'CUIntPtrT', 'CPtrDiffT', 'CWCharT',
+    'CChar16T', 'CChar32T', 'CBool', 'CComplex', 'CImaginary', 'CPtr'
+]
 
 
 def debug_handle(func):
@@ -39,7 +85,7 @@ def debug_handle(func):
             elif hasattr(node, 'name'):
                 node_info += f" name={node.name}"
         
-        self.debug_print(f"[ENTER] {func_name} {node_info}")
+        self.DebugPrint(f"[ENTER] {func_name} {node_info}")
         try:
             result = func(self, *args, **kwargs)
             result_summary = ""
@@ -47,10 +93,10 @@ def debug_handle(func):
                 result_summary = f" -> {len(result)} lines"
             elif isinstance(result, str):
                 result_summary = f" -> '{result[:50]}...'" if len(result) > 50 else f" -> '{result}'"
-            self.debug_print(f"[EXIT] {func_name} {node_info}{result_summary}")
+            self.DebugPrint(f"[EXIT] {func_name} {node_info}{result_summary}")
             return result
         except Exception as e:
-            self.debug_print(f"[ERROR] {func_name} {node_info}: {e}")
+            self.DebugPrint(f"[ERROR] {func_name} {node_info}: {e}")
             raise
     return wrapper
 
@@ -64,16 +110,64 @@ class Translator:
         self.SymbolTable = {}  # 符号表
         self.OriginalLines = []  # 原始代码行
         self.Content = ''
-        self.debug_file = None  # 调试输出文件路径
+        self.DebugFile = None  # 调试输出文件路径
+        self.IsHeader = False  # 是否生成头文件（仅处理定义、宏、导入等，忽略函数体）
+        self.UserTypes = {}  # 用户自定义类型库 {"TypeName": "CTypeName"}
+        self.AnnotationModules = set()  # 注解模块集合，用于识别类型定义模块
+        
+        self.ImportHandler = ImportHandle(self)
+        self.FunctionHandler = FunctionHandle(self)
+        self.ClassHandler = ClassHandle(self)
+        self.AssignHandler = AssignHandle(self)
+        self.AugAssignHandler = AugAssignHandle(self)
+        self.MatchHandler = MatchHandle(self)
+        self.IfHandler = IfHandle(self)
+        self.ForHandler = ForHandle(self)
+        self.WhileHandler = WhileHandle(self)
+        self.AnnAssignHandler = AnnAssignHandle(self)
+        self.TSpecialCallHandler = TSpecialCallHandle(self)
+        self.CSpecialCallHandler = CSpecialCallHandle(self)
     
-    def set_debug_file(self, file_path):
+    def _LoadAnnotationModule(self, module_name: str):
+        """加载注解模块并将 CType 子类注册为 typedef
+        
+        Args:
+            module_name: 模块名
+        """
+        import importlib
+        import sys
+        import os
+        
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        
+        try:
+            module = importlib.import_module(module_name)
+            from lib.includes.t import CType
+            
+            for attr_name in dir(module):
+                attr = getattr(module, attr_name)
+                if isinstance(attr, type) and issubclass(attr, CType) and attr is not CType:
+                    # 注册为 typedef
+                    self.SymbolTable[attr_name] = {
+                        'type': 'typedef',
+                        'original_type': attr().CName
+                    }
+        except ImportError:
+            pass
+        except Exception:
+            pass
+    
+    def SetDebugFile(self, file_path):
         """设置调试输出文件"""
-        self.debug_file = file_path
+        self.DebugFile = file_path
     
-    def debug_print(self, *args, **kwargs):
+    def DebugPrint(self, *args, **kwargs):
         """输出调试信息到文件"""
-        if self.debug_file:
-            with open(self.debug_file, 'a', encoding='utf-8') as f:
+        if self.DebugFile:
+            with open(self.DebugFile, 'a', encoding='utf-8') as f:
                 print(*args, file=f, **kwargs)
     
     def ParseHelperFiles(self, helper_files, encoding='utf-8'):
@@ -118,7 +212,7 @@ class Translator:
             
             # 合并到当前符号表
             self.SymbolTable.update(symbols)
-            self.debug_print(f"[SYMBIN] Loaded {len(symbols)} symbols from {file_path}")
+            self.DebugPrint(f"[SYMBIN] Loaded {len(symbols)} symbols from {file_path}")
             
         except Exception as e:
             print(f"Warning: Failed to load symbin file {file_path}: {e}")
@@ -254,10 +348,10 @@ class Translator:
         
         Code = []
         # 打印符号表（用于调试）
-        self.debug_print("=== Symbol Table ===")
+        self.DebugPrint("=== Symbol Table ===")
         for key, value in self.SymbolTable.items():
-            self.debug_print(f"{key}: {value}")
-        self.debug_print("===================")
+            self.DebugPrint(f"{key}: {value}")
+        self.DebugPrint("===================")
         # 处理导入语句
         for Node in ast.iter_child_nodes(Tree):
             if isinstance(Node, ast.Import):
@@ -417,32 +511,74 @@ class Translator:
         return '\n'.join(Code)
     
     def HandleImport(self, Node):
-        """处理导入语句"""
-        Code = []
-        # 检查是否有行号信息
-        line_number = getattr(Node, 'lineno', None)
-        
-        for Alias in Node.names:
-            if Alias.name not in ['c', 't']:
-                # 检查是否是标准库
-                is_standard = False
-                # 检查是否有 # std: standard 注释
-                if line_number and hasattr(self, 'OriginalLines') and 0 <= line_number - 1 < len(self.OriginalLines):
-                    original_line = self.OriginalLines[line_number - 1]
-                    if '# std: standard' in original_line:
-                        is_standard = True
-                # 检查是否是已知的标准库
-                if Alias.name == 'stdio' or is_standard:
-                    # 生成标准库include
-                    Code.append(f'#include <{Alias.name}.h>')
-                else:
-                    # 默认为本地文件include
-                    Code.append(f'#include "{Alias.name}.h"')
-        return Code
+        return self.ImportHandler.HandleImport(Node)
+
+    def HandleImportFrom(self, Node):
+        return self.ImportHandler.HandleImportFrom(Node)
+
+    def HandleFunctionDef(self, Node):
+        return self.FunctionHandler.HandleFunctionDef(Node)
+
+    def HandleClassDef(self, Node):
+        return self.ClassHandler.HandleClassDef(Node)
+
+    def HandleMethodDef(self, class_name, Node):
+        return self.ClassHandler.HandleMethodDef(class_name, Node)
+
+    def HandleAssign(self, Node):
+        return self.AssignHandler.HandleAssign(Node)
+
+    def HandleAnnAssign(self, Node):
+        return self.AnnAssignHandler.HandleAnnAssign(Node)
+
+    def HandleAugAssign(self, Node):
+        return self.AugAssignHandler.HandleAugAssign(Node)
+
+    def HandleMatch(self, Node):
+        return self.MatchHandler.HandleMatch(Node)
+
+    def HandleIf(self, Node):
+        return self.IfHandler.HandleIf(Node)
+
+    def HandleFor(self, Node):
+        return self.ForHandler.HandleFor(Node)
+
+    def HandleWhile(self, Node):
+        return self.WhileHandler.HandleWhile(Node)
+
+    def HandleTSpecialCall(self, attr, args, keywords):
+        return self.TSpecialCallHandler.HandleTSpecialCall(attr, args, keywords)
+
+    def HandleCSpecialCall(self, attr, args, keywords):
+        return self.CSpecialCallHandler.HandleCSpecialCall(attr, args, keywords)
+
+    def GetAugOpSymbol(self, Op):
+        """获取复合赋值运算符符号"""
+        op_name = type(Op).__name__
+        return AUG_OPERATOR_MAP.get(op_name, '')
     
+    def GetUnaryOpSymbol(self, Op):
+        """获取一元运算符符号"""
+        op_name = type(Op).__name__
+        return UNARY_OPERATOR_MAP.get(op_name, '')
+
     def HandleImportFrom(self, Node):
         """处理从模块导入语句"""
         if Node.module not in ['c', 't']:
+            # 检查是否有 # skip 注释
+            if hasattr(Node, 'lineno') and hasattr(self, 'OriginalLines'):
+                line_number = Node.lineno - 1
+                if 0 <= line_number < len(self.OriginalLines):
+                    original_line = self.OriginalLines[line_number]
+                    if '# skip' in original_line:
+                        return []
+                    # 检查是否是注解模块（不生成 include）
+                    if '# std: annotation' in original_line and Node.module:
+                        self.AnnotationModules.add(Node.module)
+                        # 加载模块并将 CType 子类注册为 typedef
+                        self._LoadAnnotationModule(Node.module)
+                        return []
+            
             # 检查原始代码行是否包含 #include 注释
             include_directive = None
             if hasattr(Node, 'lineno') and hasattr(self, 'OriginalLines'):
@@ -501,6 +637,25 @@ class Translator:
         Code = []
         ReturnType = 'void'
         is_function_declaration = False
+        attributes = []  # 存储 __attribute__ 属性
+        
+        # 处理装饰器（支持 @c.Attribute）
+        if Node.decorator_list:
+            for decorator in Node.decorator_list:
+                # 检查是否是 c.Attribute 装饰器
+                if isinstance(decorator, ast.Call):
+                    if isinstance(decorator.func, ast.Attribute):
+                        if decorator.func.attr == 'Attribute':
+                            # 提取属性参数
+                            for arg in decorator.args:
+                                if isinstance(arg, ast.Call):
+                                    # 处理函数调用形式的属性，如 c.CAttribute.noreturn()
+                                    attr_value = self.HandleExpr(arg)[0]
+                                    if attr_value:
+                                        attributes.append(attr_value)
+                                elif isinstance(arg, ast.Constant):
+                                    # 处理字符串常量
+                                    attributes.append(arg.value)
         
         # 检查是否是返回t.CDefine的函数，如果是，生成宏定义
         if Node.returns:
@@ -587,7 +742,7 @@ class Translator:
         Params = []
         # 为函数创建新的作用域
         self.VarScopes.append({})
-        self.debug_print(f"[SCOPE] Enter function '{Node.name}', new scope created, depth={len(self.VarScopes)}")
+        self.DebugPrint(f"[SCOPE] Enter function '{Node.name}', new scope created, depth={len(self.VarScopes)}")
         
         # 添加函数参数到当前作用域
         for Arg in Node.args.args:
@@ -625,13 +780,18 @@ class Translator:
         else:
             ParamsStr = ', '.join(Params)
         
-        # 根据是否是函数声明生成不同的代码
-        if is_function_declaration:
-            # 生成函数声明
-            Code.append(f'{ReturnType} {Node.name}({ParamsStr});')
+        # 构建属性字符串
+        attr_str = ''
+        if attributes:
+            attr_str = f' __attribute__(({', '.join(attributes)}))'
+        
+        # 根据是否是函数声明或头文件模式生成不同的代码
+        if is_function_declaration or self.IsHeader:
+            # 生成函数声明（头文件模式下只生成声明）
+            Code.append(f'{ReturnType}{attr_str} {Node.name}({ParamsStr});')
         else:
             # 生成函数定义
-            Code.append(f'{ReturnType} {Node.name}({ParamsStr}) {{')
+            Code.append(f'{ReturnType}{attr_str} {Node.name}({ParamsStr}) {{')
             body_code = self.HandleBody(Node.body)
             # 为函数体中的语句添加4个空格的缩进
             Code.extend(['    ' + line for line in body_code])
@@ -640,7 +800,7 @@ class Translator:
         # 清理作用域
         if self.VarScopes:
             self.VarScopes.pop()
-        self.debug_print(f"[SCOPE] Exit function '{Node.name}', scope popped, depth={len(self.VarScopes)}")
+        self.DebugPrint(f"[SCOPE] Exit function '{Node.name}', scope popped, depth={len(self.VarScopes)}")
         
         # 记录函数返回类型
         self.FunctionReturnTypes[Node.name] = ReturnType
@@ -650,10 +810,71 @@ class Translator:
     def HandleClassDef(self, Node):
         """处理类定义"""
         Code = []
+        
+        # 检查是否是 typedef 类
+        is_typedef = False
+        typedef_name = None
+        
+        # 检查类的注解（如果有）
+        if hasattr(Node, 'annotation') and Node.annotation:
+            try:
+                annotation_str = ast.dump(Node.annotation)
+                if 'CTypedef' in annotation_str:
+                    is_typedef = True
+                    # 检查是否有参数（如 t.CTypedef("B")）
+                    if isinstance(Node.annotation, ast.Call):
+                        if Node.annotation.args:
+                            if isinstance(Node.annotation.args[0], ast.Constant):
+                                typedef_name = Node.annotation.args[0].value
+            except Exception as e:
+                print(f'Warning: Failed to parse class annotation: {e}')
+        
+        # 检查类体中的 __annotations__ 字典
+        if not is_typedef:
+            for item in Node.body:
+                if isinstance(item, ast.Assign):
+                    for target in item.targets:
+                        if isinstance(target, ast.Name) and target.id == '__annotations__':
+                            # 检查 __annotations__ 是否是字典
+                            if isinstance(item.value, ast.Dict):
+                                # 遍历字典项
+                                for key, value in zip(item.value.keys, item.value.values):
+                                    # 检查是否有 __type__ 键
+                                    if isinstance(key, ast.Constant) and key.value == '__type__':
+                                        # 检查值是否是 CTypedef
+                                        value_str = ast.dump(value)
+                                        if 'CTypedef' in value_str:
+                                            is_typedef = True
+                                            # 检查是否有参数（如 t.CTypedef("B")）
+                                            if isinstance(value, ast.Call):
+                                                if value.args:
+                                                    if isinstance(value.args[0], ast.Constant):
+                                                        typedef_name = value.args[0].value
+        
         # 检查类是否已经在符号表中
         if Node.name not in self.SymbolTable:
             # 如果不在，添加到符号表中
-            self.SymbolTable[Node.name] = {'type': 'struct'}
+            if is_typedef:
+                # 记录为 typedef 类型
+                typedef_key = typedef_name if typedef_name else Node.name
+                self.SymbolTable[typedef_key] = {'type': 'typedef', 'original_type': f'struct {Node.name}'}
+                # 同时记录原始结构体类型
+                if Node.name != typedef_key:
+                    self.SymbolTable[Node.name] = {'type': 'struct'}
+            else:
+                # 记录为结构体类型
+                self.SymbolTable[Node.name] = {'type': 'struct'}
+        else:
+            # 如果已经在符号表中，更新类型为typedef（如果需要）
+            if is_typedef:
+                typedef_key = typedef_name if typedef_name else Node.name
+                if typedef_key not in self.SymbolTable or self.SymbolTable[typedef_key]['type'] != 'typedef':
+                    self.SymbolTable[typedef_key] = {'type': 'typedef', 'original_type': f'struct {Node.name}'}
+                # 确保原始结构体类型也在符号表中
+                if Node.name != typedef_key and (Node.name not in self.SymbolTable or self.SymbolTable[Node.name]['type'] != 'struct'):
+                    self.SymbolTable[Node.name] = {'type': 'struct'}
+        
+        # 生成结构体定义
         Code.append(f'struct {Node.name} {{')
         # 遍历类体中的所有节点，查找类变量和实例变量
         for item in Node.body:
@@ -748,6 +969,17 @@ class Translator:
                                     # 发生异常时，默认使用int类型
                                     Code.append(f'    int {var_name};')
         Code.append('};')
+        
+        # 生成 typedef 语句
+        if is_typedef:
+            typedef_target = typedef_name if typedef_name else Node.name
+            if typedef_name:
+                # 生成 typedef struct A {} B;
+                Code.append(f'typedef struct {Node.name} {typedef_target};')
+            else:
+                # 生成 typedef struct {} A;
+                Code.append(f'typedef struct {Node.name} {Node.name};')
+        
         return Code
     
     def HandleMethodDef(self, class_name, Node):
@@ -787,35 +1019,40 @@ class Translator:
         
         ParamsStr = ', '.join(Params)
         
-        # 生成函数定义
-        Code.append(f'{ReturnType} {func_name}({ParamsStr}) {{')
-        
-        # 处理函数体
-        # 为函数创建新的作用域
-        self.VarScopes.append({})
-        
-        # 添加参数到当前作用域
-        for Arg in Node.args.args:
-            if Arg.arg != 'self':  # 跳过self参数
-                try:
-                    ParamType = self.GetTypeName(Arg.annotation)
-                    if not ParamType:
-                        ParamType = 'int'
-                    self.VarScopes[-1][Arg.arg] = ParamType
-                except Exception as e:
-                    print(f'Warning: Failed to get parameter type for {Arg.arg}: {e}')
-                    self.VarScopes[-1][Arg.arg] = 'int'
-        
-        # 处理函数体语句
-        body_code = self.HandleBody(Node.body)
-        # 为函数体中的语句添加4个空格的缩进
-        Code.extend(['    ' + line for line in body_code])
-        
-        Code.append('}')
-        
-        # 清理作用域
-        if self.VarScopes:
-            self.VarScopes.pop()
+        # 根据是否是头文件模式生成不同的代码
+        if self.IsHeader:
+            # 头文件模式下只生成函数声明
+            Code.append(f'{ReturnType} {func_name}({ParamsStr});')
+        else:
+            # 生成函数定义
+            Code.append(f'{ReturnType} {func_name}({ParamsStr}) {{')
+            
+            # 处理函数体
+            # 为函数创建新的作用域
+            self.VarScopes.append({})
+            
+            # 添加参数到当前作用域
+            for Arg in Node.args.args:
+                if Arg.arg != 'self':  # 跳过self参数
+                    try:
+                        ParamType = self.GetTypeName(Arg.annotation)
+                        if not ParamType:
+                            ParamType = 'int'
+                        self.VarScopes[-1][Arg.arg] = ParamType
+                    except Exception as e:
+                        print(f'Warning: Failed to get parameter type for {Arg.arg}: {e}')
+                        self.VarScopes[-1][Arg.arg] = 'int'
+            
+            # 处理函数体语句
+            body_code = self.HandleBody(Node.body)
+            # 为函数体中的语句添加4个空格的缩进
+            Code.extend(['    ' + line for line in body_code])
+            
+            Code.append('}')
+            
+            # 清理作用域
+            if self.VarScopes:
+                self.VarScopes.pop()
         
         return Code
     
@@ -866,8 +1103,12 @@ class Translator:
                         Code.append(f'{var_name} = {ValueCode[0]};')
                     else:
                         # 变量未声明，生成声明语句
-                        # 检查右侧是否是函数调用或结构体成员访问
                         var_type = 'int'  # 默认类型
+                        
+                        # 检查是否有类型注解
+                        if hasattr(Node, 'annotation') and Node.annotation:
+                            var_type = self.GetTypeName(Node.annotation)
+                        
                         struct_name = None
                         is_pointer = False
                         
@@ -1174,17 +1415,26 @@ class Translator:
                 # 检查变量是否已经在当前作用域中声明过
                 if self.VarScopes and var_name in self.VarScopes[-1]:
                     # 变量已存在，生成赋值语句而不是声明语句
-                    self.debug_print(f'[VAR] Variable {var_name} already declared, generating assignment')
+                    self.DebugPrint(f'[VAR] Variable {var_name} already declared, generating assignment')
                     Code.append(f'{var_name} = {ValueCode[0]};')
                     return Code
                 try:
                     type_name = self.GetTypeName(Node.annotation)
                     if type_name:
                         # 调试输出
-                        self.debug_print(f'Debug: var_name={var_name}, type_name={type_name}')
+                        self.DebugPrint(f'Debug: var_name={var_name}, type_name={type_name}')
+                        
+                        # 检查是否是 typedef 类型
+                        is_typedef_type = False
+                        typedef_type = type_name
+                        
+                        # 检查类型名称是否在符号表中定义为 typedef
+                        if type_name in self.SymbolTable and self.SymbolTable[type_name]['type'] == 'typedef':
+                            is_typedef_type = True
+                        
                         # 处理数组类型，提取数组大小
                         base_type, array_size_str = extract_array_size(type_name)
-                        self.debug_print(f'Debug: base_type={base_type}, array_size_str={array_size_str}')
+                        self.DebugPrint(f'Debug: base_type={base_type}, array_size_str={array_size_str}')
                         
                         # 特殊处理数组初始化
                         if isinstance(Node.value, ast.List):
@@ -1246,7 +1496,13 @@ class Translator:
                                     else:
                                         Code.append(f'void* {var_name}{array_size_str};')
                                 else:
-                                    Code.append(f'{base_type} {var_name}{array_size_str};')
+                                    # 检查是否是typedef类型
+                                    if base_type in self.SymbolTable and self.SymbolTable[base_type]['type'] == 'typedef':
+                                        # 是typedef类型，直接使用typedef名称
+                                        Code.append(f'{base_type} {var_name}{array_size_str};')
+                                    else:
+                                        # 普通类型
+                                        Code.append(f'{base_type} {var_name}{array_size_str};')
                             else:
                                 # 优先检查是否是 t.CType 调用
                                 if isinstance(Node.value, ast.Call) and isinstance(Node.value.func, ast.Attribute):
@@ -1292,9 +1548,13 @@ class Translator:
                                     # 右侧是结构体名称，视为结构体声明
                                     struct_name = Node.value.id
                                     # 检查结构体是否在符号表中
-                                    if struct_name in self.SymbolTable and self.SymbolTable[struct_name]['type'] == 'struct':
-                                        # 生成结构体声明
-                                        Code.append(f'struct {struct_name}* {var_name}{array_size_str};')
+                                    if struct_name in self.SymbolTable:
+                                        if self.SymbolTable[struct_name]['type'] == 'struct':
+                                            # 生成结构体声明
+                                            Code.append(f'struct {struct_name}* {var_name}{array_size_str};')
+                                        elif self.SymbolTable[struct_name]['type'] == 'typedef':
+                                            # 生成typedef类型声明
+                                            Code.append(f'{struct_name}* {var_name}{array_size_str};')
                                     else:
                                         # 生成普通声明
                                         Code.append(f'{base_type} {var_name}{array_size_str} = {ValueCode[0]};')
@@ -1304,11 +1564,16 @@ class Translator:
                                     is_struct_constructor = False
                                     struct_name = None
                                     
-                                    # 检查类型注解是否是结构体
+                                    # 检查类型注解是否是结构体或typedef
                                     is_struct_annotation = False
-                                    if base_type in self.SymbolTable and self.SymbolTable[base_type]['type'] == 'struct':
-                                        is_struct_annotation = True
-                                        struct_name = base_type
+                                    is_typedef_annotation = False
+                                    if base_type in self.SymbolTable:
+                                        if self.SymbolTable[base_type]['type'] == 'struct':
+                                            is_struct_annotation = True
+                                            struct_name = base_type
+                                        elif self.SymbolTable[base_type]['type'] == 'typedef':
+                                            is_typedef_annotation = True
+                                            struct_name = base_type
                                     elif 'struct ' in base_type:
                                         # 处理类型注解中直接包含struct关键字的情况
                                         is_struct_annotation = True
@@ -1334,15 +1599,24 @@ class Translator:
                                             elif isinstance(Node.value.func, ast.Attribute):
                                                 called_func_name = Node.value.func.attr
                                             
-                                            # 检查函数名是否与结构体名相同
+                                            # 检查函数名是否与结构体名相同，或者是否是typedef的原始类型
                                             if called_func_name == struct_name:
                                                 # 检查函数是否在符号表中是结构体
+                                                if called_func_name in self.SymbolTable and self.SymbolTable[called_func_name]['type'] == 'struct':
+                                                    is_struct_constructor = True
+                                            elif is_typedef_annotation:
+                                                # 对于typedef类型，检查被调用的函数名是否与原始结构体名相同
                                                 if called_func_name in self.SymbolTable and self.SymbolTable[called_func_name]['type'] == 'struct':
                                                     is_struct_constructor = True
                                     
                                     if is_struct_constructor:
                                         # 是结构体构造函数，生成结构体声明并调用构造函数
-                                        Code.append(f'struct {struct_name} {var_name}{array_size_str};')
+                                        if is_typedef_annotation:
+                                            # 是typedef类型，直接使用typedef名称
+                                            Code.append(f'{struct_name} {var_name}{array_size_str};')
+                                        else:
+                                            # 是普通结构体类型，使用struct关键字
+                                            Code.append(f'struct {struct_name} {var_name}{array_size_str};')
                                         # 生成构造函数调用
                                         args = ['&' + var_name]
                                         for arg in Node.value.args:
@@ -1352,6 +1626,9 @@ class Translator:
                                     elif is_struct_annotation:
                                         # 类型注解是结构体，但右侧不是结构体构造函数，直接赋值
                                         Code.append(f'struct {struct_name} {var_name}{array_size_str} = {ValueCode[0]};')
+                                    elif is_typedef_annotation:
+                                        # 类型注解是typedef，直接使用typedef名称
+                                        Code.append(f'{struct_name} {var_name}{array_size_str} = {ValueCode[0]};')
                                     else:
                                         # 生成普通声明
                                         Code.append(f'{base_type} {var_name}{array_size_str} = {ValueCode[0]};')
@@ -1364,7 +1641,13 @@ class Translator:
                                     else:
                                         Code.append(f'void* {var_name}{array_size_str} = {ValueCode[0]};')
                                 else:
-                                    Code.append(f'{base_type} {var_name}{array_size_str} = {ValueCode[0]};')
+                                    # 检查是否是typedef类型
+                                    if base_type in self.SymbolTable and self.SymbolTable[base_type]['type'] == 'typedef':
+                                        # 是typedef类型，直接使用typedef名称
+                                        Code.append(f'{base_type} {var_name}{array_size_str} = {ValueCode[0]};')
+                                    else:
+                                        # 普通类型
+                                        Code.append(f'{base_type} {var_name}{array_size_str} = {ValueCode[0]};')
                         # 添加变量到当前作用域
                         if self.VarScopes:
                             self.VarScopes[-1][var_name] = type_name
@@ -1504,6 +1787,9 @@ class Translator:
             elif isinstance(Node.value, bool):
                 # 处理布尔值，将 True 转换为 1，将 False 转换为 0
                 return ['1' if Node.value else '0']
+            elif Node.value is None:
+                # 处理 None，转换为 C 的 NULL
+                return ['NULL']
             else:
                 # 检查是否是数字
                 if isinstance(Node.value, (int, float, complex)):
@@ -1550,6 +1836,16 @@ class Translator:
         elif isinstance(Node, ast.Call):
             # 处理函数调用
             if isinstance(Node.func, ast.Attribute):
+                # 检查是否是 c.CAttribute.xxx() 形式的调用
+                if isinstance(Node.func.value, ast.Attribute):
+                    if isinstance(Node.func.value.value, ast.Name) and Node.func.value.value.id == 'c' and Node.func.value.attr == 'CAttribute':
+                        # 处理 c.CAttribute.xxx() 调用，返回属性字符串
+                        attr_name = Node.func.attr
+                        args_str = ', '.join([self.HandleExpr(arg)[0] for arg in Node.args])
+                        if args_str:
+                            return [f'{attr_name}({args_str})']
+                        else:
+                            return [attr_name]
                 if isinstance(Node.func.value, ast.Name) and Node.func.value.id == 'c':
                     # 处理c模块中的特殊语法
                     return self.HandleCSpecialCall(Node.func.attr, Node.args, Node.keywords)
@@ -2199,62 +2495,13 @@ class Translator:
                                     is_struct = False
                                     struct_name = None
                                     
-                                    # 检查是否是基本类型
-                                    is_basic_type = False
-                                    basic_type_name = ''
-                                    
-                                    # 尝试从类型注解中获取类型信息
+                                    # 使用 t 库的 CType 类解析类型信息
                                     annotation_str = ast.dump(Node.annotation)
-                                    import re
+                                    ctype = t.CType.FromAnnotation(annotation_str, type_name)
                                     
-                                    # 首先根据 type_name 检查是否是基本类型
-                                    basic_types_map = {
-                                        'int': 'int',
-                                        'char': 'char',
-                                        'float': 'float',
-                                        'double': 'double',
-                                        'void': 'void',
-                                        'long': 'long',
-                                        'short': 'short',
-                                        'unsigned int': 'unsigned int',
-                                        'unsigned char': 'unsigned char',
-                                        'unsigned long': 'unsigned long',
-                                        'unsigned short': 'unsigned short',
-                                    }
-                                    if type_name in basic_types_map:
-                                        is_basic_type = True
-                                        basic_type_name = basic_types_map[type_name]
-                                    # 检查是否是基本类型组合（如 t.CUnsignedChar | t.CPtr）
-                                    elif 'CUnsignedChar' in annotation_str:
-                                        is_basic_type = True
-                                        basic_type_name = 'unsigned char'
-                                    elif 'CChar' in annotation_str:
-                                        is_basic_type = True
-                                        basic_type_name = 'char'
-                                    elif 'CInt' in annotation_str:
-                                        is_basic_type = True
-                                        basic_type_name = 'int'
-                                    elif 'CUnsignedInt' in annotation_str:
-                                        is_basic_type = True
-                                        basic_type_name = 'unsigned int'
-                                    elif 'CLong' in annotation_str:
-                                        is_basic_type = True
-                                        basic_type_name = 'long'
-                                    elif 'CUnsignedLong' in annotation_str:
-                                        is_basic_type = True
-                                        basic_type_name = 'unsigned long'
-                                    elif 'CFloat' in annotation_str:
-                                        is_basic_type = True
-                                        basic_type_name = 'float'
-                                    elif 'CDouble' in annotation_str:
-                                        is_basic_type = True
-                                        basic_type_name = 'double'
-                                    elif 'CVoid' in annotation_str:
-                                        is_basic_type = True
-                                        basic_type_name = 'void'
-                                    
-                                    # 检查是否需要添加指针
-                                    if is_basic_type and 'CPtr' in annotation_str:
+                                    is_basic_type = ctype.IsBasicType
+                                    basic_type_name = ctype.Name
+                                    if ctype.IsPointer:
                                         is_ptr = True
                                     
                                     # 如果不是基本类型，尝试从类型注解中获取结构体名称
@@ -2340,7 +2587,7 @@ class Translator:
                                             else:
                                                 Code.append(f'{base_type} {var_name}{array_size_str};')
                                     else:
-                                        self.debug_print(f"DEBUG ELSE: ValueCode[0]='{ValueCode[0]}', Node.value type={type(Node.value)}")
+                                        self.DebugPrint(f"DEBUG ELSE: ValueCode[0]='{ValueCode[0]}', Node.value type={type(Node.value)}")
                                         # 优先检查是否是 t.CType 调用
                                         if isinstance(Node.value, ast.Call) and isinstance(Node.value.func, ast.Attribute):
                                             # 检查是否是 t.CType 调用
@@ -2439,15 +2686,15 @@ class Translator:
                                                     # 处理数组指针类型，如 const char (*)[16] → const char (*var)[16]
                                                     if is_array_ptr:
                                                         # 对于数组指针，数组大小应该放在 ) 之后，变量名放在 (* 和 ) 之间
-                                                        self.debug_print(f"DEBUG: is_array_ptr=True, base_type='{base_type}', type_part='{type_part}', array_size_str='{array_size_str}'")
+                                                        self.DebugPrint(f"DEBUG: is_array_ptr=True, base_type='{base_type}', type_part='{type_part}', array_size_str='{array_size_str}'")
                                                         if storage_class:
-                                                            self.debug_print(type_part)
+                                                            self.DebugPrint(type_part)
                                                             type_with_var = type_part.replace('(*)', f'(*{var_name})')
-                                                            self.debug_print(f"DEBUG: storage_class='{storage_class}', type_with_var='{type_with_var}'")
+                                                            self.DebugPrint(f"DEBUG: storage_class='{storage_class}', type_with_var='{type_with_var}'")
                                                             Code.append(f'{storage_class} {type_with_var}{array_size_str} = {ValueCode[0]};')
                                                         else:
                                                             type_with_var = base_type.replace('(*)', f'(*{var_name})')
-                                                            self.debug_print(f"DEBUG: no storage_class, type_with_var='{type_with_var}'")
+                                                            self.DebugPrint(f"DEBUG: no storage_class, type_with_var='{type_with_var}'")
                                                             Code.append(f'{type_with_var}{array_size_str} = {ValueCode[0]};')
                                                     elif storage_class:
                                                         # 处理带存储类修饰符的变量
@@ -2717,10 +2964,8 @@ class Translator:
         
         # 跟踪是否已经生成了 default
         has_default = False
-        # 收集所有不支持的模式，最后统一生成一个 default
-        unsupported_patterns = []
         
-        # 第一遍：处理所有支持的 case
+        # 处理所有 case
         for case in Node.cases:
             # 获取 case 的模式
             pattern = case.pattern
@@ -2751,29 +2996,19 @@ class Translator:
                 case_generated = True
             elif isinstance(pattern, ast.MatchSequence):
                 # 序列模式（列表或元组），如 case [6, 7, 8]:
-                # 在 C 语言中，为每个元素生成一个 case 标签
-                for sub_pattern in pattern.patterns:
-                    if isinstance(sub_pattern, ast.MatchValue):
-                        value = self.HandleExpr(sub_pattern.value)[0]
-                        Code.append(f'    case {value}:')
-                    elif isinstance(sub_pattern, ast.MatchSingleton):
-                        # 处理 None, True, False
-                        if sub_pattern.value is None:
-                            Code.append('    case 0:  /* None */')
-                        elif sub_pattern.value is True:
-                            Code.append('    case 1:  /* True */')
-                        elif sub_pattern.value is False:
-                            Code.append('    case 0:  /* False */')
-                case_generated = True
+                # 简化处理，视为不支持
+                pass
             elif isinstance(pattern, ast.MatchAs):
                 # 命名模式或通配符模式
                 if pattern.pattern is None:
                     # 通配符模式，如 case _: 或 case (k):
                     # 检查是否有变量名
                     if pattern.name and pattern.name != '_':
-                        # 命名模式，如 case (k):
-                        # 在 C 中不支持变量捕获，最后统一生成 default
-                        unsupported_patterns.append((pattern.name, case.body))
+                        # 变量名模式，如 case (k):
+                        # 视为值匹配，生成 case 标签
+                        value = pattern.name
+                        Code.append(f'    case {value}:')
+                        case_generated = True
                     else:
                         # 真正的通配符模式，如 case _:
                         has_default = True
@@ -2784,44 +3019,37 @@ class Translator:
                     if isinstance(pattern.pattern, ast.MatchValue):
                         value = self.HandleExpr(pattern.pattern.value)[0]
                         Code.append(f'    case {value}:')
-                        # 如果有变量名，添加赋值
-                        if pattern.name:
-                            Code.append(f'        {pattern.name} = {subject};')
                         case_generated = True
-                    else:
-                        # 不支持的命名模式
-                        unsupported_patterns.append((pattern.name, case.body))
-            else:
-                # 其他不支持的 pattern 类型，如 MatchList, MatchMapping 等
-                unsupported_patterns.append((None, case.body))
             
             # 处理 case 的 body（只处理已生成的 case）
             if case_generated and case.body:
                 # 在 C 语言中，case 标签后如果有变量声明，需要用花括号包裹
                 # 为了安全起见，总是添加花括号
                 Code.append('        {')
-                body_code = self.HandleBody(case.body, in_block=True)
-                # 缩进 body 代码
-                for line in body_code:
-                    Code.append('            ' + line)
                 
-                # 如果没有 break，添加 break（C 语言 switch 需要）
-                # 检查最后一个语句是否已经是 break
-                if not (len(case.body) == 1 and isinstance(case.body[0], ast.Break)):
-                    Code.append('            break;')
-                Code.append('        }')
-        
-        # 第二遍：处理所有不支持的 pattern，统一生成一个 default
-        if unsupported_patterns and not has_default:
-            Code.append('    default:')
-            Code.append('        {')
-            for var_name, body in unsupported_patterns:
-                if var_name:
-                    Code.append(f'            {var_name} = {subject};')
-                if body:
-                    body_code = self.HandleBody(body, in_block=True)
+                # 处理 guard 条件（如 case value if condition:）
+                if hasattr(case, 'guard') and case.guard:
+                    guard_code = self.HandleExpr(case.guard)[0]
+                    Code.append(f'            if ({guard_code}) {{')
+                    body_code = self.HandleBody(case.body, in_block=True)
+                    # 缩进 body 代码
+                    for line in body_code:
+                        Code.append('                ' + line)
+                    Code.append('            }')
+                else:
+                    body_code = self.HandleBody(case.body, in_block=True)
+                    # 缩进 body 代码
                     for line in body_code:
                         Code.append('            ' + line)
+                
+                # 添加 break（C 语言 switch 需要）
+                Code.append('            break;')
+                Code.append('        }')
+        
+        # 如果没有生成 default，添加一个
+        if not has_default:
+            Code.append('    default:')
+            Code.append('        {')
             Code.append('            break;')
             Code.append('        }')
         
@@ -3023,28 +3251,27 @@ class Translator:
         """获取类型名称"""
         if isinstance(Node, ast.Name):
             type_name = Node.id
+            # 先检查用户自定义类型
+            if type_name in self.UserTypes:
+                return self.UserTypes[type_name]
+            # 检查符号表中是否存在该类型
+            if type_name in self.SymbolTable:
+                if self.SymbolTable[type_name]['type'] == 'typedef':
+                    # 是typedef类型，直接返回类型名称
+                    return type_name
+                elif self.SymbolTable[type_name]['type'] == 'struct':
+                    # 是结构体类型，返回带struct关键字的类型名称
+                    return f'struct {type_name}'
             # 检查是否是t模块中的类型
             if hasattr(t, type_name):
                 type_obj = getattr(t, type_name)
                 if isinstance(type_obj, type):
                     return type_obj().CName
             # 处理Python内置类型
-            python_builtin_types = {
-                'int': 'int',
-                'str': 'char*',
-                'bool': 'bool',
-                'float': 'float',
-                'double': 'double',
-                'list': 'void*',
-                'dict': 'void*',
-                'set': 'void*',
-                'tuple': 'void*'
-            }
-            if type_name in python_builtin_types:
-                return python_builtin_types[type_name]
+            if type_name in PYTHON_BUILTIN_TYPES:
+                return PYTHON_BUILTIN_TYPES[type_name]
             # 检查是否是基本类型名称（如CChar, CInt等）
-            basic_types = ['CChar', 'CUnsignedChar', 'CInt', 'CUnsignedInt', 'CShort', 'CUnsignedShort', 'CLong', 'CUnsignedLong', 'CFloat', 'CDouble', 'CVoid', 'CPtr']
-            if type_name in basic_types:
+            if type_name in T_MODULE_TYPES:
                 from lib.constants.config import TYPE_MAP
                 if type_name in TYPE_MAP:
                     return TYPE_MAP[type_name]
@@ -3053,37 +3280,157 @@ class Translator:
             # 将普通变量名视为结构体类型，如 DLL_STRPICENV
             return f'struct {type_name}'
         elif isinstance(Node, ast.Attribute):
-            # 处理属性访问，如 t.CInt 或 c.State
+            # 处理属性访问，如 t.CInt 或 c.State 或用户自定义库的类型
             if isinstance(Node.value, ast.Name):
-                if Node.value.id == 't':
-                    type_name = Node.attr
-                    if hasattr(t, type_name):
-                        type_obj = getattr(t, type_name)
-                        if isinstance(type_obj, type):
+                module_name = Node.value.id
+                type_name = Node.attr
+                
+                # 先检查用户自定义类型
+                if module_name == 'user_types' and type_name in self.UserTypes:
+                    return self.UserTypes[type_name]
+                
+                # 检查是否是用户导入的模块（如 my_types）
+                # 先尝试从缓存中获取
+                if not hasattr(self, '_user_type_modules'):
+                    self._user_type_modules = {}
+                if module_name not in self._user_type_modules:
+                    # 尝试导入模块
+                    try:
+                        import importlib
+                        import sys
+                        import os
+                        
+                        current_dir = os.path.dirname(os.path.abspath(__file__))
+                        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+                        if project_root not in sys.path:
+                            sys.path.insert(0, project_root)
+                        
+                        module = importlib.import_module(module_name)
+                        self._user_type_modules[module_name] = module
+                        
+                        # 如果是注解模块，自动加载 CType 子类
+                        if module_name in self.AnnotationModules:
+                            from lib.includes.t import CType
+                            for attr_name in dir(module):
+                                attr = getattr(module, attr_name)
+                                if isinstance(attr, type) and issubclass(attr, CType) and attr is not CType:
+                                    self.UserTypes[attr_name] = attr().CName
+                    except Exception as e:
+                        self._user_type_modules[module_name] = None
+                
+                # 如果是注解模块且模块已加载，确保 UserTypes 已加载
+                user_type_modules = getattr(self, '_user_type_modules', {})
+                if module_name in self.AnnotationModules and module_name in user_type_modules:
+                    module = user_type_modules.get(module_name)
+                    if module and type_name not in self.UserTypes:
+                        from lib.includes.t import CType
+                        for attr_name in dir(module):
+                            attr = getattr(module, attr_name)
+                            if isinstance(attr, type) and issubclass(attr, CType) and attr is not CType:
+                                self.UserTypes[attr_name] = attr().CName
+                
+                # 如果模块存在，尝试获取类型
+                if type_name in self.UserTypes:
+                    return self.UserTypes[type_name]
+                
+                module = self._user_type_modules.get(module_name)
+                if module and hasattr(module, type_name):
+                    type_obj = getattr(module, type_name)
+                    if isinstance(type_obj, type):
+                        from lib.includes.t import CType
+                        if issubclass(type_obj, CType):
                             return type_obj().CName
-                elif Node.value.id == 'c':
-                    # 处理c模块的属性访问，如 c.State
-                    attr_name = Node.attr
+                
+                # 尝试导入模块（用于处理 t 模块和其他特殊模块）
+                try:
+                    import importlib
+                    import sys
+                    import os
+                    
+                    # 确保当前目录在搜索路径中
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+                    if project_root not in sys.path:
+                        sys.path.insert(0, project_root)
+                    
+                    module = importlib.import_module(module_name)
+                    if hasattr(module, type_name):
+                        type_obj = getattr(module, type_name)
+                        if isinstance(type_obj, type):
+                            # 检查是否是CType的子类
+                            from lib.includes.t import CType
+                            if issubclass(type_obj, CType):
+                                return type_obj().CName
+                except ImportError:
+                    pass
+                except Exception:
+                    pass
+                
+                # 处理c模块的属性访问，如 c.State
+                if module_name == 'c':
                     # 对于c模块属性，返回属性名
-                    return f'c.{attr_name}'
+                    return f'c.{type_name}'
             return 'int'
         elif isinstance(Node, ast.Call):
-            # 处理函数调用，如 t.CStruct(name="SHTCTL")
-            if isinstance(Node.func, ast.Attribute) and isinstance(Node.func.value, ast.Name) and Node.func.value.id == 't':
+            # 处理 callable(...) 类型，转换为 C 函数指针
+            if isinstance(Node.func, ast.Name) and Node.func.id == 'callable':
+                # 第一个参数是返回值
+                return_type = 'int'
+                if Node.args:
+                    return_type = self.GetTypeName(Node.args[0])
+                
+                # 其余的关键字参数是函数参数
+                param_types = []
+                for kw in Node.keywords:
+                    param_type = self.GetTypeName(kw.value)
+                    param_types.append(param_type)
+                
+                # 生成函数指针类型
+                result = f'{return_type} (*)({", ".join(param_types)})' if param_types else f'{return_type} (*)()'
+                return result
+            
+            # 处理函数调用，如 t.CStruct(name="SHTCTL") 或用户自定义库的类型构造函数
+            if isinstance(Node.func, ast.Attribute) and isinstance(Node.func.value, ast.Name):
+                module_name = Node.func.value.id
                 type_name = Node.func.attr
-                if hasattr(t, type_name):
-                    type_obj = getattr(t, type_name)
-                    if isinstance(type_obj, type):
-                        # 解析关键字参数
-                        kwargs = {}
-                        for kw in Node.keywords:
-                            if isinstance(kw.value, ast.Constant):
-                                kwargs[kw.arg] = kw.value.value
-                            elif isinstance(kw.value, ast.Name):
-                                # 处理变量类型的参数值，如 name=DLL_STRPICENV
-                                kwargs[kw.arg] = kw.value.id
-                        # 使用关键字参数创建类型对象
-                        return type_obj(**kwargs).CName
+                
+                # 先检查用户自定义类型（构造函数形式）
+                if module_name == 'user_types' and type_name in self.UserTypes:
+                    return self.UserTypes[type_name]
+                
+                # 尝试导入模块
+                try:
+                    import importlib
+                    import sys
+                    import os
+                    
+                    # 确保当前目录在搜索路径中
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+                    if project_root not in sys.path:
+                        sys.path.insert(0, project_root)
+                    
+                    module = importlib.import_module(module_name)
+                    if hasattr(module, type_name):
+                        type_obj = getattr(module, type_name)
+                        if isinstance(type_obj, type):
+                            # 检查是否是CType的子类
+                            from lib.includes.t import CType
+                            if issubclass(type_obj, CType):
+                                # 解析关键字参数
+                                kwargs = {}
+                                for kw in Node.keywords:
+                                    if isinstance(kw.value, ast.Constant):
+                                        kwargs[kw.arg] = kw.value.value
+                                    elif isinstance(kw.value, ast.Name):
+                                        # 处理变量类型的参数值，如 name=DLL_STRPICENV
+                                        kwargs[kw.arg] = kw.value.id
+                                # 使用关键字参数创建类型对象
+                                return type_obj(**kwargs).CName
+                except ImportError:
+                    pass
+                except Exception:
+                    pass
             return 'int'
         elif isinstance(Node, ast.Subscript):
             # 处理数组类型，如 t.CChar[0x80]
@@ -3146,117 +3493,44 @@ class Translator:
             elif right_type == 'volatile':
                 return f'volatile {left_type}'
             # 处理指针类型
-            elif left_type == 'char' and right_type == '*':
-                return 'char*'
-            elif left_type == '*' and right_type == 'char':
-                return 'char*'
-            elif left_type == 'int' and right_type == '*':
-                return 'int*'
-            elif left_type == '*' and right_type == 'int':
-                return 'int*'
-            elif left_type == '*' and right_type.startswith('uint8_t'):
-                return 'uint8_t*'
-            elif left_type.startswith('uint8_t') and right_type == '*':
-                return 'uint8_t*'
+            elif right_type == '*':
+                # 右侧是指针类型，将指针符号添加到左侧类型后面
+                return f'{left_type}*'
+            elif left_type == '*':
+                # 左侧是指针类型
+                basic_types = BASIC_C_TYPES
+                if any(right_type.startswith(bt) for bt in basic_types) or '[' in right_type:
+                    if '[' in right_type:
+                        type_part = right_type.split('[')[0]
+                        array_part = right_type[right_type.find('['):]
+                        return f'{type_part}*{array_part}'
+                    return f'{right_type}*'
+                return f'struct {right_type}*'
+            # 处理 void | int 的情况（返回 void）
+            elif left_type == 'void':
+                return left_type
+            elif right_type == 'void':
+                return right_type
             # 处理数组指针类型，如 t.CConst | t.CChar[16] | t.CArrayPtr
             elif right_type == '(*)':
                 # 数组指针：将数组大小移到括号外，如 const char[16] | (*) → const char (*)[16]
-                if '[' in left_type:
-                    type_part = left_type.split('[')[0]
-                    array_part = left_type[left_type.find('['):]
-                    return f'{type_part} (*){array_part}'
-                return f'{left_type} (*)'
+                if '[' in left_type and ']' in left_type:
+                    base_type = left_type.split('[')[0]
+                    array_size = left_type[left_type.find('['):]
+                    return f'{base_type} (*){array_size}'
+                else:
+                    return f'{left_type} (*)'
             elif left_type == '(*)':
-                if '[' in right_type:
-                    type_part = right_type.split('[')[0]
-                    array_part = right_type[right_type.find('['):]
-                    return f'{type_part} (*){array_part}'
-                return f'{right_type} (*)'
-            # 处理自定义类型与指针类型的组合，如 CONSOLE | t.CPtr
-            elif right_type == '*' and left_type != 'int':
-                if left_type.startswith('struct '):
-                    return left_type + '*'
-                # 检查是否是基本类型（char, int, etc.）或包含基本类型（如 const char）
-                basic_types = ['char', 'int', 'short', 'long', 'float', 'double', 'unsigned char', 'unsigned int', 'unsigned short', 'unsigned long']
-                if any(left_type.startswith(bt) for bt in basic_types) or any(bt in left_type for bt in basic_types):
-                    # 处理数组类型与指针的组合，如 const char[16] | t.CPtr
-                    if '[' in left_type:
-                        type_part = left_type.split('[')[0]
-                        array_part = left_type[left_type.find('['):]
-                        return f'{type_part}*{array_part}'
-                    return f'{left_type}*'
+                # 左侧是数组指针类型，将数组大小移到括号外
+                if '[' in right_type and ']' in right_type:
+                    base_type = right_type.split('[')[0]
+                    array_size = right_type[right_type.find('['):]
+                    return f'{base_type} (*){array_size}'
                 else:
-                    # 检查是否已经包含 'struct '（如 'extern struct TASKCTL'）
-                    if 'struct ' in left_type:
-                        return f'{left_type}*'
-                    return f'struct {left_type}*'
-            elif left_type == '*' and right_type != 'int':
-                if right_type.startswith('struct '):
-                    # 处理数组类型与指针的组合，如 struct SHEET[MAX_SHEETS] | t.CPtr
-                    if '[' in right_type:
-                        # 提取结构体名称和数组大小
-                        struct_name = right_type.split('[')[0]  # 'struct SHEET'
-                        array_part = right_type[right_type.find('['):]  # '[MAX_SHEETS]'
-                        return f'{struct_name} *{array_part}'
-                    return right_type + '*'
-                # 检查是否是基本类型（char, int, etc.）或包含基本类型（如 const char）
-                basic_types = ['char', 'int', 'short', 'long', 'float', 'double', 'unsigned char', 'unsigned int', 'unsigned short', 'unsigned long']
-                if any(right_type.startswith(bt) for bt in basic_types) or any(bt in right_type for bt in basic_types):
-                    # 处理数组类型与指针的组合
-                    if '[' in right_type:
-                        type_part = right_type.split('[')[0]
-                        array_part = right_type[right_type.find('['):]
-                        return f'{type_part}*{array_part}'
-                    return f'{right_type}*'
-                else:
-                    # 处理数组类型与指针的组合
-                    if '[' in right_type:
-                        type_part = right_type.split('[')[0]
-                        array_part = right_type[right_type.find('['):]
-                        return f'struct {type_part} *{array_part}'
-                    return f'struct {right_type}*'
-            # 处理结构体指针类型
-            elif (left_type == 'struct' and right_type == '*') or (left_type == '*' and right_type == 'struct'):
-                return 'struct *'
-            # 处理结构体名称与指针类型的组合，如 NODE | t.CPtr
-            elif left_type.startswith('struct ') and right_type == '*':
-                return left_type + '*'
-            elif right_type.startswith('struct ') and left_type == '*':
-                return right_type + '*'
-            # 处理自定义类型与指针类型的组合，如 CONSOLE | t.CPtr
-            elif right_type == '*' and not left_type.startswith('struct ') and left_type != 'int':
-                return f'struct {left_type}*'
-            elif left_type == '*' and not right_type.startswith('struct ') and right_type != 'int':
-                return f'struct {right_type}*'
-            # 处理自定义类型与指针类型的组合，如 SHEET | t.CPtr
-            elif right_type == '*':
-                # 自定义类型与指针的组合，返回结构体指针
-                # 检查是否是基本类型（char, int, etc.）
-                basic_types = ['char', 'int', 'short', 'long', 'float', 'double', 'unsigned char', 'unsigned int', 'unsigned short', 'unsigned long']
-                if any(left_type.startswith(bt) for bt in basic_types) or '[' in left_type:
-                    # 对于基本类型或数组类型，添加指针
-                    if '[' in left_type:
-                        # 处理数组类型与指针的组合，如 t.CChar[60] | t.CPtr
-                        type_part = left_type.split('[')[0]
-                        array_part = left_type[left_type.find('['):]
-                        return f'{type_part}*{array_part}'
-                    # 对于基本类型，添加指针
-                    return f'{left_type}*'
-                return f'struct {left_type}*'
-            elif left_type == '*':
-                # 指针与自定义类型的组合，返回结构体指针
-                # 检查是否是基本类型（char, int, etc.）
-                basic_types = ['char', 'int', 'short', 'long', 'float', 'double', 'unsigned char', 'unsigned int', 'unsigned short', 'unsigned long']
-                if any(right_type.startswith(bt) for bt in basic_types) or '[' in right_type:
-                    # 对于基本类型或数组类型，添加指针
-                    if '[' in right_type:
-                        # 处理指针与数组类型的组合，如 t.CPtr | t.CChar[60]
-                        type_part = right_type.split('[')[0]
-                        array_part = right_type[right_type.find('['):]
-                        return f'{type_part}*{array_part}'
-                    # 对于基本类型，添加指针
-                    return f'{right_type}*'
-                return f'struct {right_type}*'
+                    return f'{right_type} (*)'
+            # 其他情况，简单组合
+            #else:
+            #    return f'{left_type} | {right_type}'
             elif '*' in left_type or '*' in right_type:
                 # 处理指针和结构体数组的组合，如 * | struct FREEINFO[MEMMAN_FREES] 或 struct * | struct FREEINFO[MEMMAN_FREES]
                 if (('*' in left_type or '*' in right_type) and '[' in left_type and 'struct ' in left_type) or (('*' in left_type or '*' in right_type) and '[' in right_type and 'struct ' in right_type):
@@ -3356,11 +3630,10 @@ class Translator:
                 # 特殊处理：如果类型字符串包含'struct'但实际上是基本类型，移除'struct'
                 if type_str.startswith('struct '):
                     # 检查是否是基本类型
-                    basic_types = ['CChar', 'CUnsignedChar', 'CInt', 'CUnsignedInt', 'CShort', 'CUnsignedShort', 'CLong', 'CUnsignedLong', 'CFloat', 'CDouble', 'CVoid']
                     type_name = type_str[7:]  # 移除'struct '
-                    if any(basic_type in type_name for basic_type in basic_types):
+                    if any(basic_type in type_name for basic_type in T_MODULE_TYPES):
                         # 如果是基本类型，使用正确的C类型
-                        for basic_type in basic_types:
+                        for basic_type in T_MODULE_TYPES:
                             if basic_type in type_name:
                                 if basic_type in TYPE_MAP:
                                     type_str = TYPE_MAP[basic_type]
@@ -3387,7 +3660,7 @@ class Translator:
                 return [f'((struct {struct_name} *){addr})']
             return ['0']
         # 处理单个类型转换函数，如t.CInt(x)或t.CChar(x, t.CPtr)
-        elif attr in ['CInt', 'CChar', 'CShort', 'CLong', 'CFloat', 'CDouble', 'CVoid', 'CUnsigned', 'CUnsignedChar', 'CUnsignedInt', 'CUnsignedShort', 'CUnsignedLong', 'CSignedChar', 'CSizeT', 'CInt8T', 'CInt16T', 'CInt32T', 'CInt64T', 'CUInt8T', 'CUInt16T', 'CUInt32T', 'CUInt64T', 'CIntPtrT', 'CUIntPtrT', 'CPtrDiffT', 'CWCharT', 'CChar16T', 'CChar32T', 'CBool', 'CComplex', 'CImaginary', 'CPtr']:
+        elif attr in T_ALL_TYPES:
             if len(args) >= 1:
                 # 检查第一个参数是否是元组
                 if isinstance(args[0], ast.Tuple) and len(args[0].elts) >= 2:
@@ -3450,127 +3723,14 @@ class Translator:
     
     def HandleCSpecialCall(self, attr, args, keywords):
         """处理c模块中的特殊语法"""
-        if attr == 'Asm':
-            # 处理c.Asm()调用
-            if args:
-                if isinstance(args[0], ast.Constant):
-                    asm_code = args[0].value
-                    # 处理多行字符串，将每行用 "\n\t" 连接起来
-                    lines = asm_code.strip().split('\n')
-                    if len(lines) > 1:
-                        # 多行汇编代码，生成期望的格式
-                        # 每行后面添加 \n\t，最后一行不加
-                        formatted_lines = '\\n\\t"\n        "'.join(lines)
-                        return [f'__asm__ volatile (\n        "{formatted_lines}"\n    );']
-                    else:
-                        # 单行汇编代码
-                        return [f'__asm__ volatile ("{asm_code}");']
-                elif isinstance(args[0], ast.BinOp) and isinstance(args[0].op, ast.Mod):
-                    # 处理格式化字符串，如 "out %0, %1" % (value, port)
-                    # 提取格式化字符串
-                    if isinstance(args[0].left, ast.Constant) and isinstance(args[0].left.value, str):
-                        format_str = args[0].left.value
-                        # 提取格式化参数
-                        if isinstance(args[0].right, ast.Tuple):
-                            params = []
-                            for arg in args[0].right.elts:
-                                param_code = self.HandleExpr(arg)[0]
-                                params.append(param_code)
-                            # 构建汇编代码
-                            # 对于 out 指令，我们需要使用正确的 GCC 汇编格式
-                            # 假设格式为 "out %0, %1"，其中 %0 是 value，%1 是 port
-                            asm_code = format_str
-                            # 处理引号
-                            asm_code = f'"{asm_code}"'
-                            # 为 out 指令添加操作数约束
-                            # 对于 x86 out 指令，value 应该在 eax 寄存器，port 应该在 edx 寄存器
-                            return [f'__asm__ volatile ({asm_code} : : "a"({params[0]}), "d"({params[1]}));']
-                    return ['__asm__ volatile ("nop");']
-                else:
-                    return ['__asm__ volatile ("nop");']
-            return ['__asm__ volatile ("nop");']
-        elif attr == 'Memory':
-            # 处理c.Memory()调用
-            if args:
-                if isinstance(args[0], ast.Constant):
-                    addr = args[0].value
-                    return [f'((void *){addr})']
-        elif attr == 'Set':
-            # 处理c.Set(a, b)调用，等价于a = b
-            if len(args) >= 2:
-                target = self.HandleExpr(args[0])[0]
-                value = self.HandleExpr(args[1])[0]
-                return [f'{target} = {value};']
-            return []
-        elif attr == 'TypeCast':
-            # 处理c.TypeCast()调用
-            if len(args) >= 2:
-                if isinstance(args[0], ast.Constant):
-                    type_name = args[0].value
-                else:
-                    type_name = 'void'
-                value = self.HandleExpr(args[1])[0]
-                return [f'(({type_name}){value})']
-            return ['((void *)0)']
-        elif attr == 'Macro':
-            # 处理c.Macro()调用
-            if len(args) >= 2:
-                if isinstance(args[0], ast.Constant):
-                    name = args[0].value
-                else:
-                    name = 'MACRO'
-                if isinstance(args[1], ast.Constant):
-                    value = args[1].value
-                else:
-                    value = '0'
-                return [f'#define {name} {value}']
-            return []
-        elif attr == 'Addr':
-            # 处理c.Addr()调用，翻译为 &s
-            if args:
-                expr = self.HandleExpr(args[0])[0]
-                return [f'&{expr}']
-            return ['0']
-        elif attr == 'Ptr':
-            # 处理c.Ptr()调用
-            if args:
-                addr = self.HandleExpr(args[0])[0]
-                value = None
-                type_name = None
-                # 处理位置参数（第二个参数作为value）
-                if len(args) > 1:
-                    value = self.HandleExpr(args[1])[0]
-                # 处理关键字参数
-                for kw in keywords:
-                    if kw.arg == 'value':
-                        value = self.HandleExpr(kw.value)[0]
-                    elif kw.arg == 'type':
-                        # 尝试获取类型名称
-                        type_name = self.GetTypeName(kw.value)
-                if value is not None:
-                    if type_name:
-                        return [f'*(({type_name}*){addr}) = {value};']
-                    else:
-                        return [f'*((void *){addr}) = {value};']
-                else:
-                    if type_name:
-                        return [f'(({type_name}*){addr})']
-                    else:
-                        return [f'((void *){addr})']
-            return ['((void *)0)']
-        elif attr == 'Cast':
-            # 处理c.Cast()调用，翻译为解引用指针
-            if args:
-                expr = self.HandleExpr(args[0])[0]
-                return [f'*({expr})']
-            return ['0']
-        elif attr == 'Set':
-            # 处理c.Set()调用，翻译为指针解引用赋值
-            if len(args) >= 2:
-                address = self.HandleExpr(args[0])[0]
-                value = self.HandleExpr(args[1])[0]
-                return [f'*((void*){address}) = {value};']
-            return ['0']
+        # 从 c 库的 Library_C 字典中查找对应的类
+        from lib.includes.c import Library_C
+        
+        if attr in Library_C:
+            # 调用对应类的 HandleCall 方法
+            handler_class = Library_C[attr]
+            return handler_class.HandleCall(self, args, keywords)
+        
         # 默认处理
         args_str = ', '.join([self.HandleExpr(arg)[0] for arg in args])
         return [f'c.{attr}({args_str});']
